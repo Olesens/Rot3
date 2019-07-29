@@ -31,7 +31,13 @@ param_list = ['ProtocolsSection_n_done_trials',
               'StimulusSection.nTrialsClass5',
               'StimulusSection.nTrialsClass6',
               'StimulusSection.nTrialsClass7',
-              'StimulusSection.nTrialsClass8']
+              'StimulusSection.nTrialsClass8',
+              'OverallPerformanceSection.violation.rate',
+              'OverallPerformanceSection.timeout.rate',
+              'OverallPerformanceSection.Left.hit.frac',
+              'OverallPerformanceSection.Right.hit.frac',
+              'OverallPerformanceSection.hit.frac',
+              ]
 
 # shorter param names, same as Viktor
 params_as_headers = ['file',
@@ -48,7 +54,12 @@ params_as_headers = ['file',
                      'total_CP',
                      'done_trials',
                      'A2_time',
-                     'reward_type']
+                     'reward_type',
+                     'violations',
+                     'timeouts',
+                     'hits_left',
+                     'hits_right',
+                     'hits_total']
 
 # dictionary mapping param names to their headers
 # this might not be useful actually, it is currently not being used mainly for own ease
@@ -70,7 +81,13 @@ params_to_headers = {'ProtocolsSection_n_done_trials': 'done_trials',
                      'StimulusSection_nTrialsClass5': 'left_trials',
                      'StimulusSection_nTrialsClass6': 'left_trials',
                      'StimulusSection_nTrialsClass7': 'left_trials',
-                     'StimulusSection_nTrialsClass8': 'left_trials'}
+                     'StimulusSection_nTrialsClass8': 'left_trials',
+                     'OverallPerformanceSection_violation_rate': 'violations',
+                     'OverallPerformanceSection_timeout_rate': 'timeouts',
+                     'OverallPerformanceSection_Left_hit_frac': 'hits_left',
+                     'OverallPerformanceSection_Right_hit_frac': 'hits_right',
+                     'OverallPerformanceSection_hit_frac': 'hits_total',
+}
 
 # create new list with parameters, replace . with _ to correctly extract from matlab file
 param_list_refined = []
@@ -99,7 +116,7 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder):
     rat_values = {'file_name': file_name}  # add in the name of file loaded in script to avoid confusion
     for param in param_list_refined:
         var = 'mat_saved.' + param
-        rat_values[param] = eval(var)  #eval() runs the var expression
+        rat_values[param] = eval(var)  # eval() runs the var expression
 
     # calculate sum of left and right trials
     right_trials = rat_values['StimulusSection_nTrialsClass1'] + rat_values['StimulusSection_nTrialsClass2'] \
@@ -115,7 +132,6 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder):
     date_pd = str(pd.to_datetime(date))
     split_date = date_pd.split(' ')  # split into date and time
     date_pd = split_date[0]  # keep date
-
 
     # convert Matlab time format into timestamp, remove date and ms from timestamp
     try:
@@ -142,13 +158,19 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder):
                        'total_CP': rat_values['SideSection_Total_CP_duration'],
                        'done_trials': rat_values['ProtocolsSection_n_done_trials'],
                        'A2_time': rat_values['SideSection_A2_time'],
-                       'reward_type': rat_values['SideSection_reward_type']}
+                       'reward_type': rat_values['SideSection_reward_type'],
+                       'violations': rat_values['OverallPerformanceSection_violation_rate'],
+                       'timeouts': rat_values['OverallPerformanceSection_timeout_rate'],
+                       'hits_left': rat_values['OverallPerformanceSection_Left_hit_frac'],
+                       'hits_right': rat_values['OverallPerformanceSection_Right_hit_frac'],
+                       'hits_total': rat_values['OverallPerformanceSection_hit_frac']}
 
     # create nested dict with date as key and rat+date as name
     # use tuple as dict key to create multi-indexing when creating dataframe
-    rat = {(rat_val_headers['animal_id'],date_pd): rat_val_headers}
+    rat = {(rat_val_headers['animal_id'], date_pd): rat_val_headers}
     # considering making the dict into a transposed dataframe so just need to merge later on
     return rat
+
 
 def create_df_from_dict(rat_dict):
     """
@@ -158,14 +180,15 @@ def create_df_from_dict(rat_dict):
     # create dataframe
     rat_frame = DataFrame(rat_dict, index=params_as_headers)  # make the indexing in the same order as Viktor
     rat_frame = rat_frame.T
-    #append to desired dataframe
+    # append to desired dataframe
     return rat_frame
+
 
 def whole_animal_df(animal_folder):
     df_list = []  # list to contain all dfs
     for filename in os.listdir(animal_folder):
         if filename.endswith('.mat'):
-            print("exctrating data from..", filename)
+            print("extracting data from..", filename)
             rat_session = filename
             session = create_rat_dict(rat_session, animal_folder)
             session_df = create_df_from_dict(session)
@@ -177,114 +200,120 @@ def whole_animal_df(animal_folder):
     return animal_df
 
 
-animal_folder1 = r'H:\ratter\SoloData\Data\athena\AA01'
-animal_folder2 = r'H:\ratter\SoloData\Data\athena\AA02'
-animal_folder3 = r'H:\ratter\SoloData\Data\athena\AA03'
-animal_folder4 = r'H:\ratter\SoloData\Data\athena\AA04'
-animal_folder5 = r'H:\ratter\SoloData\Data\athena\AA05'
-animal_folder6 = r'H:\ratter\SoloData\Data\athena\AA06'
-animal_folder7 = r'H:\ratter\SoloData\Data\athena\AA07'
-animal_folder8 = r'H:\ratter\SoloData\Data\athena\AA08'
+def create_all_dfs():
+    # this is the temporary solution
+    animal_folder1 = r'H:\ratter\SoloData\Data\athena\AA01'
+    animal_folder2 = r'H:\ratter\SoloData\Data\athena\AA02'
+    animal_folder3 = r'H:\ratter\SoloData\Data\athena\AA03'
+    animal_folder4 = r'H:\ratter\SoloData\Data\athena\AA04'
+    animal_folder5 = r'H:\ratter\SoloData\Data\athena\AA05'
+    animal_folder6 = r'H:\ratter\SoloData\Data\athena\AA06'
+    animal_folder7 = r'H:\ratter\SoloData\Data\athena\AA07'
+    animal_folder8 = r'H:\ratter\SoloData\Data\athena\AA08'
 
-rat_df_list = []
+    rat_df_list = []
 
-AA01_full_df = whole_animal_df(animal_folder1)
-rat_df_list.append(AA01_full_df)
-AA02_full_df = whole_animal_df(animal_folder2)
-rat_df_list.append(AA02_full_df)
-AA03_full_df = whole_animal_df(animal_folder3)
-rat_df_list.append(AA03_full_df)
-AA04_full_df = whole_animal_df(animal_folder4)
-rat_df_list.append(AA04_full_df)
-AA05_full_df = whole_animal_df(animal_folder5)
-rat_df_list.append(AA05_full_df)
-AA06_full_df = whole_animal_df(animal_folder6)
-rat_df_list.append(AA06_full_df)
-AA07_full_df = whole_animal_df(animal_folder7)
-rat_df_list.append(AA07_full_df)
-AA08_full_df = whole_animal_df(animal_folder8)
-rat_df_list.append(AA08_full_df)
+    AA01_full_df = whole_animal_df(animal_folder1)
+    rat_df_list.append(AA01_full_df)
+    AA02_full_df = whole_animal_df(animal_folder2)
+    rat_df_list.append(AA02_full_df)
+    AA03_full_df = whole_animal_df(animal_folder3)
+    rat_df_list.append(AA03_full_df)
+    AA04_full_df = whole_animal_df(animal_folder4)
+    rat_df_list.append(AA04_full_df)
+    AA05_full_df = whole_animal_df(animal_folder5)
+    rat_df_list.append(AA05_full_df)
+    AA06_full_df = whole_animal_df(animal_folder6)
+    rat_df_list.append(AA06_full_df)
+    AA07_full_df = whole_animal_df(animal_folder7)
+    rat_df_list.append(AA07_full_df)
+    AA08_full_df = whole_animal_df(animal_folder8)
+    rat_df_list.append(AA08_full_df)
 
-animal_folderD1 = r'H:\ratter\SoloData\Data\dammy\DO01'
-animal_folderD2 = r'H:\ratter\SoloData\Data\dammy\DO02'
-animal_folderD3 = r'H:\ratter\SoloData\Data\dammy\DO03'
-animal_folderD4 = r'H:\ratter\SoloData\Data\dammy\DO04'
-animal_folderD5 = r'H:\ratter\SoloData\Data\dammy\DO05'
-animal_folderD6 = r'H:\ratter\SoloData\Data\dammy\DO06'
-animal_folderD7 = r'H:\ratter\SoloData\Data\dammy\DO07'
-animal_folderD8 = r'H:\ratter\SoloData\Data\dammy\DO08'
+    animal_folderD1 = r'H:\ratter\SoloData\Data\dammy\DO01'
+    animal_folderD2 = r'H:\ratter\SoloData\Data\dammy\DO02'
+    animal_folderD3 = r'H:\ratter\SoloData\Data\dammy\DO03'
+    animal_folderD4 = r'H:\ratter\SoloData\Data\dammy\DO04'
+    animal_folderD5 = r'H:\ratter\SoloData\Data\dammy\DO05'
+    animal_folderD6 = r'H:\ratter\SoloData\Data\dammy\DO06'
+    animal_folderD7 = r'H:\ratter\SoloData\Data\dammy\DO07'
+    animal_folderD8 = r'H:\ratter\SoloData\Data\dammy\DO08'
 
-DO01_full_df = whole_animal_df(animal_folderD1)
-rat_df_list.append(DO01_full_df)
-DO02_full_df = whole_animal_df(animal_folderD2)
-rat_df_list.append(DO02_full_df)
-DO03_full_df = whole_animal_df(animal_folderD3)
-rat_df_list.append(DO03_full_df)
-DO04_full_df = whole_animal_df(animal_folderD4)
-rat_df_list.append(DO04_full_df)
-DO05_full_df = whole_animal_df(animal_folderD5)
-rat_df_list.append(DO05_full_df)
-DO06_full_df = whole_animal_df(animal_folderD6)
-rat_df_list.append(DO06_full_df)
-DO07_full_df = whole_animal_df(animal_folderD7)
-rat_df_list.append(DO07_full_df)
-DO08_full_df = whole_animal_df(animal_folderD8)
-rat_df_list.append(DO08_full_df)
+    DO01_full_df = whole_animal_df(animal_folderD1)
+    rat_df_list.append(DO01_full_df)
+    DO02_full_df = whole_animal_df(animal_folderD2)
+    rat_df_list.append(DO02_full_df)
+    DO03_full_df = whole_animal_df(animal_folderD3)
+    rat_df_list.append(DO03_full_df)
+    DO04_full_df = whole_animal_df(animal_folderD4)
+    rat_df_list.append(DO04_full_df)
+    DO05_full_df = whole_animal_df(animal_folderD5)
+    rat_df_list.append(DO05_full_df)
+    DO06_full_df = whole_animal_df(animal_folderD6)
+    rat_df_list.append(DO06_full_df)
+    DO07_full_df = whole_animal_df(animal_folderD7)
+    rat_df_list.append(DO07_full_df)
+    DO08_full_df = whole_animal_df(animal_folderD8)
+    rat_df_list.append(DO08_full_df)
 
-animal_folderS1 = r'H:\ratter\SoloData\Data\sharbat\SC01'
-animal_folderS2 = r'H:\ratter\SoloData\Data\sharbat\SC02'
-animal_folderS3 = r'H:\ratter\SoloData\Data\sharbat\SC03'
-animal_folderS4 = r'H:\ratter\SoloData\Data\sharbat\SC04'
-animal_folderS5 = r'H:\ratter\SoloData\Data\sharbat\SC05'
-animal_folderS6 = r'H:\ratter\SoloData\Data\sharbat\SC06'
+    animal_folderS1 = r'H:\ratter\SoloData\Data\sharbat\SC01'
+    animal_folderS2 = r'H:\ratter\SoloData\Data\sharbat\SC02'
+    animal_folderS3 = r'H:\ratter\SoloData\Data\sharbat\SC03'
+    animal_folderS4 = r'H:\ratter\SoloData\Data\sharbat\SC04'
+    animal_folderS5 = r'H:\ratter\SoloData\Data\sharbat\SC05'
+    animal_folderS6 = r'H:\ratter\SoloData\Data\sharbat\SC06'
 
-SC01_full_df = whole_animal_df(animal_folderS1)
-rat_df_list.append(SC01_full_df)
-SC02_full_df = whole_animal_df(animal_folderS2)
-rat_df_list.append(SC02_full_df)
-SC03_full_df = whole_animal_df(animal_folderS3)
-rat_df_list.append(SC03_full_df)
-SC04_full_df = whole_animal_df(animal_folderS4)
-rat_df_list.append(SC04_full_df)
-SC05_full_df = whole_animal_df(animal_folderS5)
-rat_df_list.append(SC05_full_df)
-SC06_full_df = whole_animal_df(animal_folderS6)
-rat_df_list.append(SC06_full_df)
+    SC01_full_df = whole_animal_df(animal_folderS1)
+    rat_df_list.append(SC01_full_df)
+    SC02_full_df = whole_animal_df(animal_folderS2)
+    rat_df_list.append(SC02_full_df)
+    SC03_full_df = whole_animal_df(animal_folderS3)
+    rat_df_list.append(SC03_full_df)
+    SC04_full_df = whole_animal_df(animal_folderS4)
+    rat_df_list.append(SC04_full_df)
+    SC05_full_df = whole_animal_df(animal_folderS5)
+    rat_df_list.append(SC05_full_df)
+    SC06_full_df = whole_animal_df(animal_folderS6)
+    rat_df_list.append(SC06_full_df)
 
-animal_folderV1 = r'H:\ratter\SoloData\Data\viktor\VP01'
-animal_folderV2 = r'H:\ratter\SoloData\Data\viktor\VP02'
-animal_folderV3 = r'H:\ratter\SoloData\Data\viktor\VP03'
-animal_folderV4 = r'H:\ratter\SoloData\Data\viktor\VP04'
-animal_folderV5 = r'H:\ratter\SoloData\Data\viktor\VP05'
-animal_folderV6 = r'H:\ratter\SoloData\Data\viktor\VP06'
-animal_folderV7 = r'H:\ratter\SoloData\Data\viktor\VP07'
-animal_folderV8 = r'H:\ratter\SoloData\Data\viktor\VP08'
+    animal_folderV1 = r'H:\ratter\SoloData\Data\viktor\VP01'
+    animal_folderV2 = r'H:\ratter\SoloData\Data\viktor\VP02'
+    animal_folderV3 = r'H:\ratter\SoloData\Data\viktor\VP03'
+    animal_folderV4 = r'H:\ratter\SoloData\Data\viktor\VP04'
+    animal_folderV5 = r'H:\ratter\SoloData\Data\viktor\VP05'
+    animal_folderV6 = r'H:\ratter\SoloData\Data\viktor\VP06'
+    animal_folderV7 = r'H:\ratter\SoloData\Data\viktor\VP07'
+    animal_folderV8 = r'H:\ratter\SoloData\Data\viktor\VP08'
 
-VP01_full_df = whole_animal_df(animal_folderV1)
-rat_df_list.append(VP01_full_df)
-VP02_full_df = whole_animal_df(animal_folderV2)
-rat_df_list.append(VP02_full_df)
-VP03_full_df = whole_animal_df(animal_folderV3)
-rat_df_list.append(VP03_full_df)
-VP04_full_df = whole_animal_df(animal_folderV4)
-rat_df_list.append(VP04_full_df)
-VP05_full_df = whole_animal_df(animal_folderV5)
-rat_df_list.append(VP05_full_df)
-VP06_full_df = whole_animal_df(animal_folderV6)
-rat_df_list.append(VP06_full_df)
-VP07_full_df = whole_animal_df(animal_folderV7)
-rat_df_list.append(VP07_full_df)
-VP08_full_df = whole_animal_df(animal_folderV8)
-rat_df_list.append(VP08_full_df)
+    VP01_full_df = whole_animal_df(animal_folderV1)
+    rat_df_list.append(VP01_full_df)
+    VP02_full_df = whole_animal_df(animal_folderV2)
+    rat_df_list.append(VP02_full_df)
+    VP03_full_df = whole_animal_df(animal_folderV3)
+    rat_df_list.append(VP03_full_df)
+    VP04_full_df = whole_animal_df(animal_folderV4)
+    rat_df_list.append(VP04_full_df)
+    VP05_full_df = whole_animal_df(animal_folderV5)
+    rat_df_list.append(VP05_full_df)
+    VP06_full_df = whole_animal_df(animal_folderV6)
+    rat_df_list.append(VP06_full_df)
+    VP07_full_df = whole_animal_df(animal_folderV7)
+    rat_df_list.append(VP07_full_df)
+    VP08_full_df = whole_animal_df(animal_folderV8)
+    rat_df_list.append(VP08_full_df)
+
+    return rat_df_list
 
 
+def save_dataframe(dataframe, name = 'Rat_full_df'):
+    # Save large dataframe in project
+    with open("Rot3_data\\" + name + ".pkl", "wb") as f:
+        pickle.dump(dataframe, f)
 
 
+rat_df_list = create_all_dfs()
 Rat_full = pd.concat(rat_df_list)
-
-# Save large dataframe in project
-with open("Rot3_data\\Rat_full_df"+ ".pkl", "wb") as f:
-    pickle.dump(Rat_full, f)
+save_dataframe(Rat_full, name='Rat_full_df')
 
 # Create full df containing all animals from all experimenter folder
 # core working directory
