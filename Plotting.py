@@ -6,16 +6,17 @@ import ipython_genutils
 
 
 pickle_in = open("Rot3_data\\Rat_full_df.pkl","rb")
-pwm = pickle.load(pickle_in)
-animals = ['AA02','AA04','AA06','AA08','DO01','DO02','DO05','DO06','SC01','SC02','SC03','SC06','VP02','VP03','VP06']
+Animal_df = pickle.load(pickle_in)
 
-def clean_up_df(df, animallist = [], index=True, multiindex=True, fixstages = True, duplicates = True):
+
+def clean_up_df(df, animallist=[], index=True, multiindex=True, fixstages=True, duplicates=True):
     """
-    :param df:
+    :param df: dataframe to take in a clean up
     :param animallist:
     :param index:
     :param multiindex:
     :param fixstages:
+    :param duplicates
     :return:
     """
     if index is True:
@@ -31,7 +32,7 @@ def clean_up_df(df, animallist = [], index=True, multiindex=True, fixstages = Tr
     if duplicates is True: # remove duplicates
         df = df.swaplevel('animal', 'date2')  # can't remember is this is necessary for duplicate removal
         df = df.reset_index()  # In order to delete duplicates
-        dup_r = df[df.duplicated(['date2', 'animal'])]
+        dup_r = df[df.duplicated(['date2', 'animal'])]  # this is actually unnecessary
         # print('dub is:',dup_r)
         df = df.drop_duplicates(['date2', 'animal'])
         dup_r = df[df.duplicated(['date2', 'animal'])]  # Run a little double check
@@ -43,5 +44,9 @@ def clean_up_df(df, animallist = [], index=True, multiindex=True, fixstages = Tr
     return df
 
 
+# Create the cleaned up PWM dataframe, with only the below selected animals
+animals = ['AA02', 'AA04', 'AA06', 'AA08', 'DO01', 'DO02', 'DO05', 'DO06',
+           'SC01', 'SC02', 'SC03', 'SC06', 'VP02', 'VP03', 'VP06']
+pwm = clean_up_df(Animal_df, animallist=animals)
 
 
