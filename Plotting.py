@@ -3,8 +3,12 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 import ipython_genutils
+# Plotting params (globally set)
+plt.rcParams['figure.figsize'] = [20, 10]
+plt.rcParams['axes.facecolor'] = '555555'
+plt.rcParams['text.color'] = 'white'
 
-
+# Load in file
 pickle_in = open("Rot3_data\\Rat_full_df.pkl","rb")
 Animal_df = pickle.load(pickle_in)
 
@@ -44,9 +48,23 @@ def clean_up_df(df, animallist=[], index=True, multiindex=True, fixstages=True, 
     return df
 
 
+def plot_cp(df):
+    df_cp = df['total_CP']
+    cp_plot = df_cp.plot(marker='o',  # I might be able to set some of these parameters globally and not need functionlinewidth=1.0,
+                    markersize=2.5,
+                    cmap=plt.cm.RdPu)
+    plt.xticks(rotation=75,
+               fontsize='medium')
+    plt.ylabel('Total CP')
+    plt.xlabel('Date')
+    plt.title('Total_CP over time for each animal')
+    return cp_plot
+
+
 # Create the cleaned up PWM dataframe, with only the below selected animals
 animals = ['AA02', 'AA04', 'AA06', 'AA08', 'DO01', 'DO02', 'DO05', 'DO06',
            'SC01', 'SC02', 'SC03', 'SC06', 'VP02', 'VP03', 'VP06']
 pwm = clean_up_df(Animal_df, animallist=animals)
-
-
+# Create CP plot
+CP_fig = plot_cp(pwm)
+# plot CP duration for all animals

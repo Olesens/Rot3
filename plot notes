@@ -1,0 +1,113 @@
+"A_cp = A_df['total_CP']\n",
+    "A_cp.head()\n",
+    "A_cp.plot(marker='o',linewidth = 1.0, markersize = 2.5,cmap=plt.cm.RdPu)\n",
+    "plt.xticks( rotation = 75, fontsize= 'medium')\n",
+    "plt.ylabel('Total CP')\n",
+    "plt.xlabel('Date')\n",
+    "plt.title('Total_CP over time for each PWM animal')\n",
+    "plt.close()
+
+
+pwm = A_df.copy()\n",
+    "mask = pwm['stage']== 0\n",
+    "pwm1 = pwm[mask]\n",
+    "pwm_stage0 = pwm1\n",
+    "pwm_stage0.head()\n",
+    "pwm_stage0_cp = pwm_stage0['done_trials']\n",
+    "# pwm_real = pwm_stage0['done_trials'] - (pwm_stage0['done_trials']* pwm_stage0['violations'])\n",
+    "# would maybe be an idea to perform this operation higher up. \n",
+    "list = pwm_stage0_cp.columns.values # get list to use for labelling\n",
+    "# plt.plot instead of df.plot fixed my problem with the x-axis, but the colors are worse, and legends are gone\n",
+    "# ideally figure out how to fix things in either\n",
+    "plt.plot(pwm_stage0_cp, marker='o',linewidth = 1.0, markersize = 2.5) #cmap=plt.cm.RdPu)\n",
+    "plt.legend(list)\n",
+    "plt.ylabel('Done Trials') \n",
+    "plt.xlabel('Date')\n",
+    "plt.title('Stage 0: Done trials for PWM animals')\n",
+    "plt.close()\n",
+    "# figure out:\n",
+    "# how to change line colors by making a loop\n",
+    "# colormap = cmap=plt.cm.RdPu\n"
+
+
+ "pwm_st1 = A_df.copy()\n",
+    "mask = pwm_st1['stage']== 1\n",
+    "pwm_stage1 = pwm_st1[mask] #pwm_stage1 df defined\n",
+    "pwm_stage1_dt = pwm_stage1['done_trials'] - (pwm_stage1['done_trials']* pwm_stage1['violations'])\n",
+    "list = pwm_stage1_dt.columns.values\n",
+    "plt.plot(pwm_stage1_dt, marker='o',linewidth = 1.0, markersize = 2.5)\n",
+    "plt.xticks( rotation = 75, fontsize= 'medium')\n",
+    "plt.legend(list)\n",
+    "plt.ylabel('Done trials - violations') \n",
+    "plt.ylim([0,500])\n",
+    "plt.xlabel('Date')\n",
+    "plt.title('Stage 1: Done trials for PWM animals (minus violations)')\n",
+    "plt.close()
+
+
+     "pwm_stage1_dt2 = pwm_stage1['done_trials']\n",
+    "plt.plot(pwm_stage1_dt2, marker='o',linewidth = 1.0, markersize = 2.5)\n",
+    "list = pwm_stage1_dt2.columns.values\n",
+    "plt.xticks( rotation = 75, fontsize= 'medium')\n",
+    "plt.legend(list)\n",
+    "plt.ylabel('Done trials') \n",
+    "plt.ylim([0,500])\n",
+    "plt.xlabel('Date')\n",
+    "plt.title('Stage 1: Done trials for PWM animals (with violations)')\n",
+    "plt.close()\n",
+    "# would be cool to maybe include see the stages in extension of each other. \n"
+
+    "pwm_stage1_vio = (pwm_stage1['done_trials']* pwm_stage1['violations'])\n",
+    "plt.plot(pwm_stage1_vio, marker='o',linewidth = 1.0, markersize = 2.5)\n",
+    "list = pwm_stage1_vio.columns.values\n",
+    "plt.xticks( rotation = 75, fontsize= 'medium')\n",
+    "plt.legend(list)\n",
+    "plt.ylabel('Violations') \n",
+    "plt.ylim([0,500])\n",
+    "plt.xlabel('Date')\n",
+    "plt.title('Stage 1: Violations for each PWM animal')\n",
+    "plt.close()\n"
+
+    "pwm_stage1_cp = pwm_stage1['total_CP']\n",
+    "plt.plot(pwm_stage1_cp, marker='o',linewidth = 1.0, markersize = 2.5)\n",
+    "list = pwm_stage1_cp.columns.values\n",
+    "plt.xticks( rotation = 75, fontsize= 'medium')\n",
+    "plt.legend(list)\n",
+    "plt.ylabel('CP duration') \n",
+    "plt.xlabel('Date')\n",
+    "plt.title('Stage 1: CP duration for each PWM animal')\n",
+    "plt.close()
+
+    "pwm_stage1_tm = (pwm_stage1['done_trials']* pwm_stage1['timeouts'])\n",
+    "plt.plot(pwm_stage1_tm, marker='o',linewidth = 1.0, markersize = 2.5)\n",
+    "list = pwm_stage1_tm.columns.values\n",
+    "plt.xticks( rotation = 75, fontsize= 'medium')\n",
+    "plt.legend(list)\n",
+    "plt.ylabel('Timeouts (nTrials)') \n",
+    "plt.xlabel('Date')\n",
+    "plt.title('Stage 1: Timeout trials for each PWM animal')\n",
+    "plt.close()\n"
+
+
+
+    "pwm_stage1_l = pwm_stage1['left_trials'] #so its almost the same as hits*trials\n",
+    "plt.plot(pwm_stage1_l, marker='o',linewidth = 1.0, markersize = 2.5)\n",
+    "list = pwm_stage1_l.columns.values\n",
+    "plt.xticks( rotation = 75, fontsize= 'medium')\n",
+    "plt.legend(list)\n",
+    "plt.ylabel('Left hits') \n",
+    "plt.ylim([0,250])\n",
+    "plt.xlabel('Date')\n",
+    "plt.title('Stage 1: Left hits for each PWM animal')\n",
+    "pwm_stage1_l = pwm_stage1['left_trials'] #so its almost the same as hits*trials\n",
+    "plt.plot(pwm_stage1_l, marker='o',linewidth = 1.0, markersize = 2.5)\n",
+    "list = pwm_stage1_l.columns.values\n",
+    "plt.xticks( rotation = 75, fontsize= 'medium')\n",
+    "plt.legend(list)\n",
+    "plt.ylabel('Left hits') \n",
+    "plt.ylim([0,250])\n",
+    "plt.xlabel('Date')\n",
+    "plt.title('Stage 1: Left hits for each PWM animal')"
+
+
+    
