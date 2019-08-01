@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import ipython_genutils
 # Plotting params (globally set)
 plt.rcParams['figure.figsize'] = [20, 10]
-plt.rcParams['axes.facecolor'] = '555555'
-plt.rcParams['text.color'] = 'white'
+plt.rcParams['axes.facecolor'] = 'FFFFFF'
+plt.rcParams['text.color'] = 'black'
 
 # Load in file
 pickle_in = open("Rot3_data\\Rat_full_df.pkl","rb")
@@ -48,23 +48,94 @@ def clean_up_df(df, animallist=[], index=True, multiindex=True, fixstages=True, 
     return df
 
 
-def plot_cp(df):
-    df_cp = df['total_CP']
-    cp_plot = df_cp.plot(marker='o',  # I might be able to set some of these parameters globally and not need functionlinewidth=1.0,
-                    markersize=2.5,
-                    cmap=plt.cm.RdPu)
-    plt.xticks(rotation=75,
-               fontsize='medium')
+def plot_cp(df, stage='All'):
+    if stage != 'All':
+        mask = df['stage'] == stage
+        df = df[mask]
+        df_cp = df['total_CP']
+        col_list = df_cp.columns.values  # get list to use for labelling
+        cp_plot = plt.plot(df_cp,
+                            marker='o',
+                            linewidth=1.0,
+                            markersize=2.5)
+        plt.xticks(rotation=75)
+        plt.legend(col_list)
+
+    else:
+        print('all stages included')
+        df_cp = df['total_CP']
+        cp_plot = df_cp.plot(marker='o',  # I might be able to set some of these parameters globally and not need functionlinewidth=1.0,
+                             markersize=2.5,
+                             cmap=plt.cm.RdPu)
+        plt.xticks(rotation=0,
+                   fontsize='medium')
     plt.ylabel('Total CP')
     plt.xlabel('Date')
-    plt.title('Total_CP over time for each animal')
+    plt.title('Total CP over time for each PWM animal')
     return cp_plot
+
+
+def plot_trials(df, stage='All', inc_vio=True):
+    violations_label = ''
+    if stage != 'All':
+        mask = df['stage']== stage
+        df = df[mask]
+    else:
+        print('all stages included')
+    if inc_vio is True:
+        df_trials = df['done_trials'] - (df['done_trials'] * df['violations'])
+        violations_label = 'minus violations'
+
+    else:
+        df_trials = df['done_trials']
+    col_list = df_trials.columns.values  # get list to use for labelling
+    tri_plot = plt.plot(df_trials,
+                        marker='o',
+                        linewidth=1.0,
+                        markersize=2.5)
+    plt.xticks(rotation=75)
+    plt.legend(col_list)
+    plt.ylabel('Done Trials')
+    plt.xlabel('Date')
+    plt.title('Stage ' + str(stage) + ': Done trials for PWM animals ' + str(violations_label))
+
+    # plt.plot instead of df.plot fixed my problem with the x-axis, but the colors are worse, and legends are gone\n",
+    # ideally figure out how to fix things in either\n",
+    # how to change line colors by making a loop
+    # colormap = cmap=plt.cm.RdPu
+    return tri_plot
 
 
 # Create the cleaned up PWM dataframe, with only the below selected animals
 animals = ['AA02', 'AA04', 'AA06', 'AA08', 'DO01', 'DO02', 'DO05', 'DO06',
            'SC01', 'SC02', 'SC03', 'SC06', 'VP02', 'VP03', 'VP06']
 pwm = clean_up_df(Animal_df, animallist=animals)
-# Create CP plot
-CP_fig = plot_cp(pwm)
+
 # plot CP duration for all animals
+CP_fig = plot_cp(pwm)
+plt.savefig('Rot3_data\\CP_fig.png', bbox_inches='tight')
+plt.close()
+
+# plot CP duration for stage 1
+st1_CP = plot_cp(pwm, stage=1)
+plt.savefig('Rot3_data\\st1_CP.png', bbox_inches='tight')
+plt.close()
+
+# Done trials for stage 0
+st0_trials = plot_trials(pwm, stage=0)
+plt.savefig('Rot3_data\\st0_trials.png', bbox_inches='tight')
+plt.close()
+
+# Done trials for stage 1
+st1_trials = plot_trials(pwm, stage=1)
+plt.savefig('Rot3_data\\st1_trials.png', bbox_inches='tight')
+plt.close()
+
+# Done trials for stage 2
+st2_trials = plot_trials(pwm, stage=2)
+plt.savefig('Rot3_data\\st2_trials.png', bbox_inches='tight')
+plt.close()
+
+
+
+
