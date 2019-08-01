@@ -75,29 +75,40 @@ def plot_cp(df, stage='All'):
     return cp_plot
 
 
-def plot_trials(df, stage='All', inc_vio=True):
-    violations_label = ''
+def plot_trials(df, stage='All', inc_vio=True, vio_only=False, tm_only=False):
+    # Filter according to stages
     if stage != 'All':
         mask = df['stage']== stage
         df = df[mask]
     else:
         print('all stages included')
-    if inc_vio is True:
+    # Labels for plot title
+    violations_label = ''
+    title = ': Done trials for PWM animals '
+    if vio_only is True:
+        df_trials = (df['done_trials'] * df['violations'])
+        title = ': Violation trials for PWM animals'
+    elif tm_only is True:
+        df_trials = (df['done_trials'] * df['timeouts'])
+        title = ': Timeout trials for PWM animals'
+    elif inc_vio is True:
         df_trials = df['done_trials'] - (df['done_trials'] * df['violations'])
         violations_label = 'minus violations'
-
     else:
         df_trials = df['done_trials']
+
     col_list = df_trials.columns.values  # get list to use for labelling
     tri_plot = plt.plot(df_trials,
                         marker='o',
                         linewidth=1.0,
                         markersize=2.5)
+    if vio_only is True:
+        plt.ylim([0, 200])
     plt.xticks(rotation=75)
     plt.legend(col_list)
-    plt.ylabel('Done Trials')
     plt.xlabel('Date')
-    plt.title('Stage ' + str(stage) + ': Done trials for PWM animals ' + str(violations_label))
+    plt.ylabel('Trials')
+    plt.title('Stage ' + str(stage) + title + str(violations_label))
 
     # plt.plot instead of df.plot fixed my problem with the x-axis, but the colors are worse, and legends are gone\n",
     # ideally figure out how to fix things in either\n",
@@ -136,6 +147,24 @@ st2_trials = plot_trials(pwm, stage=2)
 plt.savefig('Rot3_data\\st2_trials.png', bbox_inches='tight')
 plt.close()
 
+# Violation trials for stage 1
+st1_vio_trials = plot_trials(pwm, stage=1, vio_only=True)
+plt.savefig('Rot3_data\\st1_vio_trials.png', bbox_inches='tight')
+plt.close()
 
+# Violation trials for stage 2
+st2_vio_trials = plot_trials(pwm, stage=2, vio_only=True)
+plt.savefig('Rot3_data\\st2_vio_trials.png', bbox_inches='tight')
+plt.close()
+
+# Timeout trials for stage 1
+st1_tm_trials = plot_trials(pwm, stage=1, tm_only=True)
+plt.savefig('Rot3_data\\st1_tm_trials.png', bbox_inches='tight')
+plt.close()
+
+# Timeout trials for stage 2
+st2_tm_trials = plot_trials(pwm, stage=2, tm_only=True)
+plt.savefig('Rot3_data\\st2_tm_trials.png', bbox_inches='tight')
+plt.close()
 
 
