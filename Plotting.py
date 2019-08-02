@@ -186,3 +186,6 @@ def run_all_plots():
 
 
 pwm_trials = Animal_df['done_trials'] - (Animal_df['violations']*Animal_df['done_trials']) - (Animal_df['timeouts']*Animal_df['done_trials']) - Animal_df['left_trials'] - Animal_df['right_trials']
+Animal_df2 = Animal_df.copy()
+Animal_df2['trial_diff'] = pwm_trials
+
