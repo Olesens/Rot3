@@ -45,6 +45,8 @@ def clean_up_df(df, animallist=[], index=True, multiindex=True, fixstages=True, 
         df = df.set_index(['date2', 'animal'])
         df = df.sort_index()
         df = df.unstack()
+
+        #could include a show removed duplicates function
     return df
 
 
@@ -55,16 +57,17 @@ def plot_cp(df, stage='All'):
         df_cp = df['total_CP']
         col_list = df_cp.columns.values  # get list to use for labelling
         cp_plot = plt.plot(df_cp,
-                            marker='o',
-                            linewidth=1.0,
-                            markersize=2.5)
+                           marker='o',
+                           linewidth=1.0,
+                           markersize=2.5)
         plt.xticks(rotation=75)
         plt.legend(col_list)
 
     else:
         print('all stages included')
         df_cp = df['total_CP']
-        cp_plot = df_cp.plot(marker='o',  # I might be able to set some of these parameters globally and not need functionlinewidth=1.0,
+        cp_plot = df_cp.plot(marker='o',  # I might be able to set some of these parameters globally and not need function
+                             linewidth=1.0,
                              markersize=2.5,
                              cmap=plt.cm.RdPu)
         plt.xticks(rotation=0,
@@ -76,6 +79,16 @@ def plot_cp(df, stage='All'):
 
 
 def plot_trials(df, stage='All', inc_vio=True, vio_only=False, tm_only=False):
+    """
+    :param df: dataframe to use for plotting
+    :type df: dataframe
+    :param stage: what stages to include
+    :type stage: string or int
+    :param inc_vio:
+    :param vio_only: only plot
+    :param tm_only: only plots timeouts
+    :return: plot of certain trials over time for given df
+    """
     # Filter according to stages
     if stage != 'All':
         mask = df['stage']== stage
@@ -122,49 +135,54 @@ animals = ['AA02', 'AA04', 'AA06', 'AA08', 'DO01', 'DO02', 'DO05', 'DO06',
            'SC01', 'SC02', 'SC03', 'SC06', 'VP02', 'VP03', 'VP06']
 pwm = clean_up_df(Animal_df, animallist=animals)
 
-# plot CP duration for all animals
-CP_fig = plot_cp(pwm)
-plt.savefig('Rot3_data\\CP_fig.png', bbox_inches='tight')
-plt.close()
 
-# plot CP duration for stage 1
-st1_CP = plot_cp(pwm, stage=1)
-plt.savefig('Rot3_data\\st1_CP.png', bbox_inches='tight')
-plt.close()
+def run_all_plots():
+    # plot CP duration for all animals
+    CP_fig = plot_cp(pwm)
+    plt.savefig('Rot3_data\\CP_fig.png', bbox_inches='tight')
+    plt.close()
 
-# Done trials for stage 0
-st0_trials = plot_trials(pwm, stage=0)
-plt.savefig('Rot3_data\\st0_trials.png', bbox_inches='tight')
-plt.close()
+    # plot CP duration for stage 1
+    st1_CP = plot_cp(pwm, stage=1)
+    plt.savefig('Rot3_data\\st1_CP.png', bbox_inches='tight')
+    plt.close()
 
-# Done trials for stage 1
-st1_trials = plot_trials(pwm, stage=1)
-plt.savefig('Rot3_data\\st1_trials.png', bbox_inches='tight')
-plt.close()
+    # Done trials for stage 0
+    st0_trials = plot_trials(pwm, stage=0)
+    plt.savefig('Rot3_data\\st0_trials.png', bbox_inches='tight')
+    plt.close()
 
-# Done trials for stage 2
-st2_trials = plot_trials(pwm, stage=2)
-plt.savefig('Rot3_data\\st2_trials.png', bbox_inches='tight')
-plt.close()
+    # Done trials for stage 1
+    st1_trials = plot_trials(pwm, stage=1)
+    plt.savefig('Rot3_data\\st1_trials.png', bbox_inches='tight')
+    plt.close()
 
-# Violation trials for stage 1
-st1_vio_trials = plot_trials(pwm, stage=1, vio_only=True)
-plt.savefig('Rot3_data\\st1_vio_trials.png', bbox_inches='tight')
-plt.close()
+    # Done trials for stage 2
+    st2_trials = plot_trials(pwm, stage=2)
+    plt.savefig('Rot3_data\\st2_trials.png', bbox_inches='tight')
+    plt.close()
 
-# Violation trials for stage 2
-st2_vio_trials = plot_trials(pwm, stage=2, vio_only=True)
-plt.savefig('Rot3_data\\st2_vio_trials.png', bbox_inches='tight')
-plt.close()
+    # Violation trials for stage 1
+    st1_vio_trials = plot_trials(pwm, stage=1, vio_only=True)
+    plt.savefig('Rot3_data\\st1_vio_trials.png', bbox_inches='tight')
+    plt.close()
 
-# Timeout trials for stage 1
-st1_tm_trials = plot_trials(pwm, stage=1, tm_only=True)
-plt.savefig('Rot3_data\\st1_tm_trials.png', bbox_inches='tight')
-plt.close()
+    # Violation trials for stage 2
+    st2_vio_trials = plot_trials(pwm, stage=2, vio_only=True)
+    plt.savefig('Rot3_data\\st2_vio_trials.png', bbox_inches='tight')
+    plt.close()
 
-# Timeout trials for stage 2
-st2_tm_trials = plot_trials(pwm, stage=2, tm_only=True)
-plt.savefig('Rot3_data\\st2_tm_trials.png', bbox_inches='tight')
-plt.close()
+    # Timeout trials for stage 1
+    st1_tm_trials = plot_trials(pwm, stage=1, tm_only=True)
+    plt.savefig('Rot3_data\\st1_tm_trials.png', bbox_inches='tight')
+    plt.close()
+
+    # Timeout trials for stage 2
+    st2_tm_trials = plot_trials(pwm, stage=2, tm_only=True)
+    plt.savefig('Rot3_data\\st2_tm_trials.png', bbox_inches='tight')
+    plt.close()
 
 
+
+
+pwm_trials = Animal_df['done_trials'] - (Animal_df['violations']*Animal_df['done_trials']) - (Animal_df['timeouts']*Animal_df['done_trials']) - Animal_df['left_trials'] - Animal_df['right_trials']
