@@ -105,11 +105,11 @@ def plot_trials(df, stage='All', p_type='all_trials'):
                     'left': df['left_trials'] / df['done_trials']*100,
                     'right': df['right_trials'] / df['done_trials']*100}
 
-    p_types_title = {'all_trials': 'All done trials for PWM animals minus violations and timeouts ',
+    p_types_title = {'all_trials': ' done trials for PWM animals minus violations and timeouts ',
                      'vio_only': ': % Violation trials for PWM animals',
                      'tm_only': ': % Timeout trials for PWM animals',
-                     'left': '% Left trials for PWM animals',
-                     'right': '% Right trials for PWM animals'}
+                     'left': ': % Left trials for PWM animals',
+                     'right': ': % Right trials for PWM animals'}
 
     df_trials = p_types_dict[p_type]
     col_list = df_trials.columns.values  # get list to use for labelling
@@ -127,11 +127,46 @@ def plot_trials(df, stage='All', p_type='all_trials'):
     plt.xticks(rotation=75)
     plt.legend(col_list)
     plt.xlabel('Date')
-    plt.title(p_types_title[p_type])
+    plt.title(stage, p_types_title[p_type])
 
     # how to change line colors by making a loop
     return tri_plot
 
+def boxplot_animal(df, animal_id, stage='All', percentage = False):
+    # maybe only for stage 2 and 3 really?
+    # select for the single animal, thus animal = level, axis=1 because it is on the column level
+    # not on the index level, .xs allows selection at specific often lower level
+
+
+    single_animal = df.xs(animal_id, level='animal', axis=1).copy()  # single animal dataframe
+    vio = vio = single_animal['violations']*100  # this is in percentage
+    tm = single_animal['timeouts']*100  # this is in percentage
+
+    mask = single_animal['done_trials'] == 0
+    single_animal['done_trials'] = single_animal['done_trials'].mask(mask, 1)
+    right = (single_animal['right_trials'] / single_animal['done_trials']) * 100
+    left = (single_animal['left_trials'] / single_animal['done_trials']) * 100
+
+    height = np.add(left, right).tolist()
+    height2 = np.add(height, vio).tolist()
+    barWidth = 1
+
+    boxplot = plt.bar(single_animal.index, right, color='#045a8d', edgecolor='black', width=barWidth)
+    plt.bar(single_animal.index, left, bottom=right, color='#016c59', edgecolor='black', width=barWidth)
+    plt.bar(single_animal.index, vio, bottom=height, color='#810f7c', edgecolor='black', width=barWidth)
+    plt.bar(single_animal.index, tm, bottom=height2, color='#636363', edgecolor='black', width=barWidth)
+
+    plt.xticks(rotation=75)
+    plt.xlabel('Date')
+    plt.ylabel('Percentage')
+    plt.ylim([0, 125])
+    legend = ['Right trials', 'Left trials', 'Violations', 'Timeouts']
+    plt.legend(legend, fontsize=14)
+    plt.title('Categorization of trials for: ' + animal_id, fontsize=18)
+
+    # Figure out how to add legend
+
+    return boxplot
 
 # Create the cleaned up PWM dataframe, with only the below selected animals
 animals = ['AA02', 'AA04', 'AA06', 'AA08', 'DO01', 'DO02', 'DO05', 'DO06',
@@ -205,8 +240,13 @@ def run_all_plots():
     plt.savefig('Rot3_data\\st2_right_trials.png', bbox_inches='tight')
     plt.close()
 
-
-
+def run_box_plots():
+    for animal in animals:
+        fig_name = animal + '_boxp'
+        plot = boxplot_animal(pwm, animal)
+        plt.savefig('Rot3_data\\' + fig_name + '.png', bbox_inches='tight')
+        plt.close()
+# Was trying to check if timeouts, violations and left right trials make up all done trials. Some kinks currently
 #pwm_trials = Animal_df['done_trials'] - (Animal_df['violations']*Animal_df['done_trials']) - (Animal_df['timeouts']*Animal_df['done_trials']) - Animal_df['left_trials'] - Animal_df['right_trials']
 #Animal_df2 = Animal_df.copy()
 #Animal_df2['trial_diff'] = pwm_trials
