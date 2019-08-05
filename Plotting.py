@@ -252,3 +252,20 @@ def run_box_plots():
 #Animal_df2 = Animal_df.copy()
 #Animal_df2['trial_diff'] = pwm_trials
 
+
+def history(single_session):
+    df = single_session
+    session_list = []
+    hh = (df['history_hits'])[0]
+    hv = (df['history_vio'])[0]
+    htm = (df['history_tm'])[0]
+    for position in range(len(hv)):
+        if hh[position] == 1:
+            session_list.append('hits')
+        elif hv[position] == 1:
+            session_list.append('vio')
+        elif htm[position] == 1:
+            session_list.append('tm')
+        else:
+            session_list.append('dunno')
+    return session_list  # this works!

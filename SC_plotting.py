@@ -3,6 +3,7 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 import ipython_genutils
+
 # Plotting params (globally set)
 plt.rcParams['figure.figsize'] = [20, 10]
 plt.rcParams['axes.facecolor'] = 'FFFFFF'
@@ -133,6 +134,7 @@ def plot_trials(df, stage='All', p_type='all_trials'):
     # how to change line colors by making a loop
     return tri_plot
 
+
 def boxplot_animal(df, animal_id, stage='All', percentage = False):
     # maybe only for stage 2 and 3 really?
     # select for the single animal, thus animal = level, axis=1 because it is on the column level
@@ -168,11 +170,6 @@ def boxplot_animal(df, animal_id, stage='All', percentage = False):
     # Figure out how to add legend
 
     return boxplot
-
-# Create the cleaned up PWM dataframe, with only the below selected animals
-animals = ['AA02', 'AA04', 'AA06', 'AA08', 'DO01', 'DO02', 'DO05', 'DO06',
-           'SC01', 'SC02', 'SC03', 'SC06', 'VP02', 'VP03', 'VP06']
-pwm = clean_up_df(Animal_df, animallist=animals)
 
 
 def run_all_plots():
@@ -241,14 +238,19 @@ def run_all_plots():
     plt.savefig('Rot3_data\\st2_right_trials.png', bbox_inches='tight')
     plt.close()
 
+
 def run_box_plots():
     for animal in animals:
         fig_name = animal + '_boxp'
         plot = boxplot_animal(pwm, animal)
         plt.savefig('Rot3_data\\' + fig_name + '.png', bbox_inches='tight')
         plt.close()
-# Was trying to check if timeouts, violations and left right trials make up all done trials. Some kinks currently
-#pwm_trials = Animal_df['done_trials'] - (Animal_df['violations']*Animal_df['done_trials']) - (Animal_df['timeouts']*Animal_df['done_trials']) - Animal_df['left_trials'] - Animal_df['right_trials']
-#Animal_df2 = Animal_df.copy()
-#Animal_df2['trial_diff'] = pwm_trials
+
+
+# Create the cleaned up SC dataframe, shouldn't need to select animals
+#animals = ['AA02', 'AA04', 'AA06', 'AA08', 'DO01', 'DO02', 'DO05', 'DO06',
+#           'SC01', 'SC02', 'SC03', 'SC06', 'VP02', 'VP03', 'VP06']
+
+sc = clean_up_df(Animal_df)
+
 
