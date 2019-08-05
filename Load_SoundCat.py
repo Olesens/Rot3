@@ -236,12 +236,12 @@ def save_dataframe(dataframe, name='Rat_full_df'):
     with open("Rot3_data\\" + name + ".pkl", "wb") as f:
         pickle.dump(dataframe, f)
 
-
+# Create the dataframe
 data_folder = r'H:\ratter\SoloData\Data'
 rat_df_list = create_all_dfs(data_folder)
 SC_full_df = pd.concat(rat_df_list)
 save_dataframe(SC_full_df, name='SC_full_df')
-
+# it is sorted in a slightly weird way, so should sort before swapping levels
 
 
 
