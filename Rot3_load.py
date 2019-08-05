@@ -116,7 +116,11 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder):
     rat_values = {'file_name': file_name}  # add in the name of file loaded in script to avoid confusion
     for param in param_list_refined:
         var = 'mat_saved.' + param
-        rat_values[param] = eval(var)  # eval() runs the var expression
+        try:
+            rat_values[param] = eval(var)  # eval() runs the var expression
+        except:
+            print("failed to extract param, most likely soundcategorization file. Nothing returned")
+            return None
 
     # calculate sum of left and right trials
     right_trials = rat_values['StimulusSection_nTrialsClass1'] + rat_values['StimulusSection_nTrialsClass2'] \
@@ -311,9 +315,13 @@ def save_dataframe(dataframe, name = 'Rat_full_df'):
         pickle.dump(dataframe, f)
 
 
-rat_df_list = create_all_dfs()
-Rat_full = pd.concat(rat_df_list)
-save_dataframe(Rat_full, name='Rat_full_df')
+#rat_df_list = create_all_dfs()
+#Rat_full = pd.concat(rat_df_list)
+#save_dataframe(Rat_full, name='Rat_full_df')
+
+rat_df_list2 = create_all_dfs()
+Rat_full2 = pd.concat(rat_df_list2)
+save_dataframe(Rat_full2, name='Rat_full2_df')
 
 # Create full df containing all animals from all experimenter folder
 # core working directory

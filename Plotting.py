@@ -30,6 +30,7 @@ def clean_up_df(df, animallist=[], index=True, multiindex=True, fixstages=True, 
     if fixstages is True:
         mask = (df['stage'] == 1) & (df['A2_time'] > 0)  # Fix stages problem!!
         df['stage'] = df['stage'].mask(mask, 2)  # have not yet created mask for stage 3
+        # stage 3 equals: stage = 1(after mask 2) and reward type = NoReward
     if animallist:
         df = df.loc[animallist]  # include only specifically given animals
         # should make this dependent on their settings file in the future
