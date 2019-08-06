@@ -151,9 +151,6 @@ def boxplot_animal(df, animal_id, stage='All', percentage = False):
     left = (single_animal['left_trials'] / single_animal['done_trials']) * 100
 
     height = np.add(left, right).tolist()
-    height_new = [x if x is not None else 0.1 for x in height]
-    #height[height == 0.0] = 0.1
-    #height[height == None] = 0.1
     height2 = np.add(height, vio).tolist()
     barWidth = 1
 
@@ -162,8 +159,8 @@ def boxplot_animal(df, animal_id, stage='All', percentage = False):
     # still gives errors...
     boxplot = plt.bar(single_animal.index, right, color='#045a8d', edgecolor='black', width=barWidth)
     plt.bar(single_animal.index, left, bottom=right, color='#016c59', edgecolor='black', width=barWidth)
-    plt.bar(single_animal.index, vio, bottom=height_new, color='#810f7c', edgecolor='black', width=barWidth)
-    #plt.bar(single_animal.index, tm, bottom=height2, color='#636363', edgecolor='black', width=barWidth)
+    plt.bar(single_animal.index, vio, bottom=height, color='#810f7c', edgecolor='black', width=barWidth)
+    plt.bar(single_animal.index, tm, bottom=height2, color='#636363', edgecolor='black', width=barWidth)
 
 
 
@@ -171,7 +168,7 @@ def boxplot_animal(df, animal_id, stage='All', percentage = False):
     plt.xlabel('Date')
     plt.ylabel('Percentage')
     plt.ylim([0, 125])
-    legend = ['Timeouts', 'Violations', 'Right trials', 'Left trials']  #currently wrong
+    legend = ['Right trials', 'Left trials', 'Violations', 'Timeouts']
     plt.legend(legend, fontsize=14)
     plt.title('Categorization of trials for: ' + animal_id, fontsize=18)
 
@@ -249,17 +246,16 @@ def run_all_plots():
 
 def run_box_plots():
     for animal in animals:
-        fig_name = animal + '_boxp'
+        fig_name = 'sc_' + animal + '_boxp'
         plot = boxplot_animal(sc, animal)
         plt.show()
-        #plt.savefig('Rot3_data\\' + fig_name + '.png', bbox_inches='tight')
+        plt.savefig('Rot3_data\\' + fig_name + '.png', bbox_inches='tight')
         plt.close()
 
 
 # Create the cleaned up SC dataframe, shouldn't need to select animals
-animals = ['AA01', 'AA03', 'AA05', 'DO04', 'DO08', 'SC04', 'SC05',
+animals = ['AA01', 'AA03', 'AA05', 'AA07', 'DO04', 'DO08', 'SC04', 'SC05',
            'VP01', 'VP07', 'VP08']
 
 sc = clean_up_df(Animal_df)
 
-boxplot_animal(sc,'VP08')
