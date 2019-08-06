@@ -273,7 +273,7 @@ def create_sc_df():  # Create the dataframe
     save_dataframe(SC_full_df, name='SC_full_df')
 
 
-AA01 = whole_animal_df(data_folder)
+#AA01 = whole_animal_df(data_folder)
 
 
 
