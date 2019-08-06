@@ -29,8 +29,8 @@ param_list = ['ProtocolsSection_n_done_trials',
               'StimulusSection.nTrialsClass2',
               'StimulusSection.nTrialsClass3',
               'StimulusSection.nTrialsClass4',
-              # 'StimulusSection.nTrialsClass5',
-              # 'StimulusSection.nTrialsClass6',
+              'StimulusSection.nTrialsClass5',
+              'StimulusSection.nTrialsClass6',
               # 'StimulusSection.nTrialsClass7',
               # 'StimulusSection.nTrialsClass8',
               'OverallPerformanceSection.violation.rate',
@@ -38,6 +38,14 @@ param_list = ['ProtocolsSection_n_done_trials',
               'OverallPerformanceSection.Left.hit.frac',
               'OverallPerformanceSection.Right.hit.frac',
               'OverallPerformanceSection.hit.frac',
+              # 'SideSection.deltaf.history',
+              'SoundCategorization.violation.history',
+              'SoundCategorization.hit.history',
+              # 'SoundCategorization.pair.history',
+              'SoundCategorization.timeout.history',
+              'StimulusSection.thisclass',
+              'SideSection.previous.sides',
+              'SideSection.ThisTrial'
               ]
 
 # shorter param names, same as Viktor
@@ -61,7 +69,15 @@ params_as_headers = ['file',
                      'timeouts',
                      'hits_left',
                      'hits_right',
-                     'hits_total']
+                     'hits_total',
+                     'history_vio',
+                     'history_hits',
+                     # 'history_pair',
+                     'history_tm',
+                     'history_stim',
+                     'history_side',
+                     'last_choice'
+                     ]
 
 # dictionary mapping param names to their headers
 # this might not be useful actually, it is currently not being used mainly for own ease
@@ -124,9 +140,15 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder):
         except:
             print("failed to extract", param)
 
-    # calculate sum of left and right trials
-    right_trials = rat_values['StimulusSection_nTrialsClass1'] + rat_values['StimulusSection_nTrialsClass2']
-    left_trials = rat_values['StimulusSection_nTrialsClass3'] + rat_values['StimulusSection_nTrialsClass4']
+    # calculate sum of left and right trials, try to include 5 and 6 if not only use 1-4
+    try:
+        right_trials = rat_values['StimulusSection_nTrialsClass1'] + rat_values['StimulusSection_nTrialsClass2'] \
+                       + rat_values['StimulusSection_nTrialsClass3']
+        left_trials = rat_values['StimulusSection_nTrialsClass4'] + rat_values['StimulusSection_nTrialsClass5']\
+                       + rat_values['StimulusSection_nTrialsClass6']
+    except:
+        right_trials = rat_values['StimulusSection_nTrialsClass1'] + rat_values['StimulusSection_nTrialsClass2']
+        left_trials = rat_values['StimulusSection_nTrialsClass3'] + rat_values['StimulusSection_nTrialsClass4']
 
     # create separate values for date and save time
     split = rat_values['SavingSection_SaveTime'].split()  # split into date and time
@@ -168,7 +190,14 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder):
                        'timeouts': rat_values['OverallPerformanceSection_timeout_rate'],
                        'hits_left': rat_values['OverallPerformanceSection_Left_hit_frac'],
                        'hits_right': rat_values['OverallPerformanceSection_Right_hit_frac'],
-                       'hits_total': rat_values['OverallPerformanceSection_hit_frac']}
+                       'hits_total': rat_values['OverallPerformanceSection_hit_frac'],
+                       'history_vio': rat_values['SoundCategorization_violation_history'],
+                       'history_hits': rat_values['SoundCategorization_hit_history'],
+                       # 'history_pair': rat_values['SoundCategorization_pair_history'],
+                       'history_tm': rat_values['SoundCategorization_timeout_history'],
+                       'history_stim': rat_values['StimulusSection_thisclass'],
+                       'history_side': rat_values['SideSection_previous_sides'],
+                       'last_choice': rat_values['SideSection_ThisTrial']}
 
     # create nested dict with date as key and rat+date as name
     # use tuple as dict key to create multi-indexing when creating dataframe
@@ -236,14 +265,44 @@ def save_dataframe(dataframe, name='Rat_full_df'):
     with open("Rot3_data\\" + name + ".pkl", "wb") as f:
         pickle.dump(dataframe, f)
 
-# Create the dataframe
-data_folder = r'H:\ratter\SoloData\Data'
-rat_df_list = create_all_dfs(data_folder)
-SC_full_df = pd.concat(rat_df_list)
-save_dataframe(SC_full_df, name='SC_full_df')
-# it is sorted in a slightly weird way, so should sort before swapping levels
+
+def create_sc_df():  # Create the dataframe
+    data_folder = r'H:\ratter\SoloData\Data'
+    rat_df_list = create_all_dfs(data_folder)
+    SC_full_df = pd.concat(rat_df_list)
+    save_dataframe(SC_full_df, name='SC_full_df')
+
+
+AA01 = whole_animal_df(data_folder)
 
 
 
+def mini_hist():
+    hits = (AA01['history_hits'])[0]
+    tm = (AA01['history_tm'])[0]
+    stim = (AA01['history_stim'])[0]
+    side = (AA01['history_side'])[0]
+    vio = (AA01['history_vio'])[0]
+    vio = pd.DataFrame(vio, columns=['vio'])
+    vio = vio.T
+    tm = (AA01['history_tm'])[0]
+    tm = pd.DataFrame(tm, columns=['tm'])
+    tm = tm.T
+    stim = (AA01['history_stim'])[0]
+    stim = pd.DataFrame(stim, columns=['stim'])
+    stim = pd.DataFrame(stim, columns=['stim'])
+    stim = stim.T
+    side = (AA01['history_side'])[0]
+    side = pd.DataFrame(side, columns=['side'])
+    side = side.T
+    hits = (AA01['history_hits'])[0]
+    hits = pd.DataFrame(hits, columns=['hits'])
+    hits = hits.T
+    list = [vio, tm, stim, side, hits]
+    history = pd.concat(list)
+
+    history['righty'] = (history['side'] == 114) & (history['hits'] == 1)
+    history['righty'].sum()
 
 
+    return history
