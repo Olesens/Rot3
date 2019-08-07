@@ -259,3 +259,49 @@ animals = ['AA01', 'AA03', 'AA05', 'AA07', 'DO04', 'DO08', 'SC04', 'SC05',
 
 sc = clean_up_df(Animal_df)
 
+
+def create_pcurve(df, animal_id, date):
+    single_animal = df.xs(animal_id, level='animal', axis=1).copy()
+    session = single_animal.loc[date]
+    stim = session['history_stim']
+    side = session['history_side']
+    hits = session['history_hits']
+
+    stim = pd.DataFrame(stim, columns=['stim'])
+    stim = stim.T
+    side = pd.DataFrame(side, columns=['side'])
+    side = side.T
+    hits = pd.DataFrame(hits, columns=['hits'])
+    hits = hits.T
+
+    list = [side, stim, hits]
+    history = pd.concat(list)
+    history = history.T
+
+    # amount of times the rat went right when stim 1 was on (which is the correct choice
+    history['stim1_wr'] = (history['side'] == 114) & (history['stim'] == 1) & (history['hits'] == 1)
+    history['stim2_wr'] = (history['side'] == 114) & (history['stim'] == 2) & (history['hits'] == 1)
+    # for stim 3 and 4 the rat went right, which would incorrect for those stimuli
+    history['stim3_wr'] = (history['side'] == 108) & (history['stim'] == 3) & (history['hits'] == 0)
+    history['stim4_wr'] = (history['side'] == 108) & (history['stim'] == 4) & (history['hits'] == 0)
+
+    sum_stim1 = history['stim1_wr'].sum()
+    sum_stim2 = history['stim2_wr'].sum()
+    sum_stim3 = history['stim3_wr'].sum()
+    sum_stim4 = history['stim4_wr'].sum()
+
+    done_trials = session.loc['done_trials'] - ((session.loc['violations'] + session.loc['timeouts']) * session.loc['done_trials'])
+    stim1_perc = sum_stim1/done_trials*100
+    stim2_perc = sum_stim2/done_trials*100
+    stim3_perc = sum_stim3 / done_trials*100
+    stim4_perc = sum_stim4 / done_trials*100
+
+    dict = {'Stim_sum': [sum_stim1, sum_stim2, sum_stim3, sum_stim4],
+            'Stim_perc': [stim1_perc, stim2_perc, stim3_perc, stim4_perc]
+            }
+    stim_df = pd.DataFrame(dict, index=['stim1', 'stim2', 'stim3', 'stim4'])
+    return stim_df
+
+    #history['righty'].sum()
+
+create_pcurve(sc,'AA01','2019-07-30')
