@@ -40,7 +40,8 @@ param_list = ['ProtocolsSection_n_done_trials',
               'AthenaDelayComp.violation.history',
               'AthenaDelayComp.hit.history',
               'AthenaDelayComp.pair.history',
-              'AthenaDelayComp.timeout.history'
+              'AthenaDelayComp.timeout.history',
+              'SideSection.previous.sides'
               ]
 
 # shorter param names, same as Viktor
@@ -67,7 +68,8 @@ params_as_headers = ['file',
                      'history_vio',
                      'history_hits',
                      'history_pair',
-                     'history_tm']
+                     'history_tm',
+                     'history_side']
 
 # dictionary mapping param names to their headers
 # this might not be useful actually, it is currently not being used mainly for own ease
@@ -190,6 +192,7 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder):
                        'history_hits': rat_values['AthenaDelayComp_hit_history'],
                        'history_pair': rat_values['AthenaDelayComp_pair_history'],
                        'history_tm': rat_values['AthenaDelayComp_timeout_history']
+                       'history_side': rat_values['SideSection_previous_sides']
                        }
 
     # create nested dict with date as key and rat+date as name
@@ -251,10 +254,12 @@ def save_dataframe(dataframe, name = 'Rat_full_df'):
     with open("Rot3_data\\" + name + ".pkl", "wb") as f:
         pickle.dump(dataframe, f)
 
-data_folder = r'H:\ratter\SoloData\Data'
-rat_df_list = create_all_dfs(data_folder)
-Rat_full = pd.concat(rat_df_list)
-save_dataframe(Rat_full, name='Rat_full_df')
+#data_folder = r'H:\ratter\SoloData\Data'
+#rat_df_list = create_all_dfs(data_folder)
+#Rat_full = pd.concat(rat_df_list)
+#save_dataframe(Rat_full, name='Rat_full_df')
+
+create_rat_dict('data_@AthenaDelayComp_athena_AA02_190807a.mat', r'H:\ratter\SoloData\Data\athena\AA02' )
 
 
 

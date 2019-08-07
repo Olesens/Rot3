@@ -299,6 +299,7 @@ def create_pcurve(df, animal_id, date):
     dict = {'Stim_sum': [sum_stim1, sum_stim2, sum_stim3, sum_stim4],
             'Stim_perc': [stim1_perc, stim2_perc, stim3_perc, stim4_perc]
             }
+    #this is not quite right! it should be left divided by right for a given stimuli how often does it go right compared to left
     stim_df = pd.DataFrame(dict, index=['stim1', 'stim2', 'stim3', 'stim4'])
     return stim_df
 
