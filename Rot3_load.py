@@ -69,7 +69,7 @@ params_as_headers = ['file',
                      'history_hits',
                      'history_pair',
                      'history_tm',
-                     'history_side']
+                     'history_side']  # not actually side history but info about which side would be correct
 
 # dictionary mapping param names to their headers
 # this might not be useful actually, it is currently not being used mainly for own ease
@@ -101,6 +101,7 @@ params_to_headers = {'ProtocolsSection_n_done_trials': 'done_trials',
                      'AthenaDelayComp_hit_history': 'history_hits',
                      'AthenaDelayComp_pair_history': 'history_pair',
                      'AthenaDelayComp_timeout_history': 'history_tm'
+                     # add side history
                      }
 
 # create new list with parameters, replace . with _ to correctly extract from matlab file
