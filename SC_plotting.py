@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+import scipy as sy
 import ipython_genutils
 
 # Plotting params (globally set)
@@ -253,56 +255,281 @@ def run_box_plots():
         plt.close()
 
 
-# Create the cleaned up SC dataframe, shouldn't need to select animals
-animals = ['AA01', 'AA03', 'AA05', 'AA07', 'DO04', 'DO08', 'SC04', 'SC05',
-           'VP01', 'VP07', 'VP08']
+def check(df, animal_id, date):
+    # could maybe modify this a little to be shorter, but it works atm
+    single_animal = df.xs(animal_id, level='animal', axis=1).copy()
+    session = single_animal.loc[date]
+    stim = session['history_stim']
+    try:
+        stim = pd.DataFrame(stim, columns=['stim']).T
 
-sc = clean_up_df(Animal_df)
+    except ValueError:
+        print('Could not extract stimulus history, check that specific animal and session exists')
+        return False
+    else:
+        return True
 
 
-def create_pcurve(df, animal_id, date):
+def cal_prob(df, animal_id, date):
+    # can definitely bring this baby down in size
     single_animal = df.xs(animal_id, level='animal', axis=1).copy()
     session = single_animal.loc[date]
     stim = session['history_stim']
     side = session['history_side']
     hits = session['history_hits']
 
-    stim = pd.DataFrame(stim, columns=['stim'])
-    stim = stim.T
-    side = pd.DataFrame(side, columns=['side'])
-    side = side.T
-    hits = pd.DataFrame(hits, columns=['hits'])
-    hits = hits.T
+    if check(df, animal_id, date) is False:
+        return None
 
-    list = [side, stim, hits]
-    history = pd.concat(list)
+    stim = pd.DataFrame(stim, columns=['stim']).T
+    side = pd.DataFrame(side, columns=['side']).T
+    hits = pd.DataFrame(hits, columns=['hits']).T
+    dfs = [side, stim, hits]
+    history = pd.concat(dfs)
     history = history.T
 
-    # amount of times the rat went right when stim 1 was on (which is the correct choice
-    history['stim1_wr'] = (history['side'] == 114) & (history['stim'] == 1) & (history['hits'] == 1)
-    history['stim2_wr'] = (history['side'] == 114) & (history['stim'] == 2) & (history['hits'] == 1)
-    # for stim 3 and 4 the rat went right, which would incorrect for those stimuli
-    history['stim3_wr'] = (history['side'] == 108) & (history['stim'] == 3) & (history['hits'] == 0)
-    history['stim4_wr'] = (history['side'] == 108) & (history['stim'] == 4) & (history['hits'] == 0)
 
-    sum_stim1 = history['stim1_wr'].sum()
-    sum_stim2 = history['stim2_wr'].sum()
-    sum_stim3 = history['stim3_wr'].sum()
-    sum_stim4 = history['stim4_wr'].sum()
+    # stage condition
+    if 6 in history['stim'].values:
+        print('detected 6 stimuli, calculating probabilities..')
+        # amount of times the rat went right when stim 1 was on (which is the correct choice)
+        history['stim1_wr'] = (history['side'] == 114) & (history['stim'] == 1) & (history['hits'] == 1)
+        history['stim2_wr'] = (history['side'] == 114) & (history['stim'] == 2) & (history['hits'] == 1)
+        history['stim3_wr'] = (history['side'] == 114) & (history['stim'] == 3) & (history['hits'] == 1)
+        # for stim 3 and 4 the rat went right, which would be incorrect for those stimuli
+        history['stim4_wr'] = (history['side'] == 108) & (history['stim'] == 4) & (history['hits'] == 0)
+        history['stim5_wr'] = (history['side'] == 108) & (history['stim'] == 5) & (history['hits'] == 0)
+        history['stim6_wr'] = (history['side'] == 108) & (history['stim'] == 6) & (history['hits'] == 0)
+        # sum the above into one variable for each stimuli
+        sum_stim1R = history['stim1_wr'].sum()
+        sum_stim2R = history['stim2_wr'].sum()
+        sum_stim3R = history['stim3_wr'].sum()
+        sum_stim4R = history['stim4_wr'].sum()
+        sum_stim5R = history['stim5_wr'].sum()
+        sum_stim6R = history['stim6_wr'].sum()
 
-    done_trials = session.loc['done_trials'] - ((session.loc['violations'] + session.loc['timeouts']) * session.loc['done_trials'])
-    stim1_perc = sum_stim1/done_trials*100
-    stim2_perc = sum_stim2/done_trials*100
-    stim3_perc = sum_stim3 / done_trials*100
-    stim4_perc = sum_stim4 / done_trials*100
+        # extract all done trials minus violations and timeouts and calculate percentage
+        done_trials = session.loc['done_trials'] - (
+                    (session.loc['violations'] + session.loc['timeouts']) * session.loc['done_trials'])
+        # could do the above outside of the condition
+        stim1_percR = sum_stim1R / done_trials * 100
+        stim2_percR = sum_stim2R / done_trials * 100
+        stim3_percR = sum_stim3R / done_trials * 100
+        stim4_percR = sum_stim4R / done_trials * 100
+        stim5_percR = sum_stim5R / done_trials * 100
+        stim6_percR = sum_stim6R / done_trials * 100
 
-    dict = {'Stim_sum': [sum_stim1, sum_stim2, sum_stim3, sum_stim4],
-            'Stim_perc': [stim1_perc, stim2_perc, stim3_perc, stim4_perc]
-            }
-    #this is not quite right! it should be left divided by right for a given stimuli how often does it go right compared to left
-    stim_df = pd.DataFrame(dict, index=['stim1', 'stim2', 'stim3', 'stim4'])
-    return stim_df
+        # just doing it for left as well to check if it adds up to 100% which it should when timeouts and violations
+        # are not included
 
-    #history['righty'].sum()
+        # amount of times the rat went left when stim 1,2,3
+        history['stim1_wl'] = (history['side'] == 114) & (history['stim'] == 1) & (history['hits'] == 0)
+        history['stim2_wl'] = (history['side'] == 114) & (history['stim'] == 2) & (history['hits'] == 0)
+        history['stim3_wl'] = (history['side'] == 114) & (history['stim'] == 3) & (history['hits'] == 0)
+        # for stim 4,5,6 the rat went left
+        history['stim4_wl'] = (history['side'] == 108) & (history['stim'] == 4) & (history['hits'] == 1)
+        history['stim5_wl'] = (history['side'] == 108) & (history['stim'] == 5) & (history['hits'] == 1)
+        history['stim6_wl'] = (history['side'] == 108) & (history['stim'] == 6) & (history['hits'] == 1)
 
-create_pcurve(sc,'AA01','2019-07-30')
+        # sum the above into one variable for each stimuli
+        sum_stim1L = history['stim1_wl'].sum()
+        sum_stim2L = history['stim2_wl'].sum()
+        sum_stim3L = history['stim3_wl'].sum()
+        sum_stim4L = history['stim4_wl'].sum()
+        sum_stim5L = history['stim5_wl'].sum()
+        sum_stim6L = history['stim6_wl'].sum()
+        stim1_percL = sum_stim1L / done_trials * 100
+        stim2_percL = sum_stim2L / done_trials * 100
+        stim3_percL = sum_stim3L / done_trials * 100
+        stim4_percL = sum_stim4L / done_trials * 100
+        stim5_percL = sum_stim5L / done_trials * 100
+        stim6_percL = sum_stim6L / done_trials * 100
+
+        # calculate probability
+        # sum the left and right choices for each given stimulus
+        stim1_sum = sum_stim1R + sum_stim1L
+        stim2_sum = sum_stim2R + sum_stim2L
+        stim3_sum = sum_stim3R + sum_stim3L
+        stim4_sum = sum_stim4R + sum_stim4L
+        stim5_sum = sum_stim5R + sum_stim5L
+        stim6_sum = sum_stim6R + sum_stim6L
+
+        # calculate the percentage of right choices for each given stimulus
+        s1_right_prob = sum_stim1R / stim1_sum * 100
+        s2_right_prob = sum_stim2R / stim2_sum * 100
+        s3_right_prob = sum_stim3R / stim3_sum * 100
+        s4_right_prob = sum_stim4R / stim4_sum * 100
+        s5_right_prob = sum_stim5R / stim5_sum * 100
+        s6_right_prob = sum_stim6R / stim6_sum * 100
+
+        # create a dict with all variables to include in dataframe
+        dict = {'Sum right choices': [sum_stim1R, sum_stim2R, sum_stim3R, sum_stim4R, sum_stim5R, sum_stim6R],
+                'Perc_R of all done': [stim1_percR, stim2_percR, stim3_percR, stim4_percR, stim5_percR, stim6_percR],
+                'Sum left choices': [sum_stim1L, sum_stim2L, sum_stim3L, sum_stim4L, sum_stim5L, sum_stim6L],
+                'Perc_L of all done': [stim1_percL, stim2_percL, stim3_percL, stim4_percL, stim5_percL, stim6_percL],
+                'Stimulus trials sum': [stim1_sum, stim2_sum, stim3_sum, stim4_sum, stim5_sum, stim6_sum],
+                'Right_prob': [s1_right_prob, s2_right_prob, s3_right_prob, s4_right_prob, s5_right_prob, s6_right_prob]
+                }
+        stim_df = pd.DataFrame(dict, index=['stim1', 'stim2', 'stim3', 'stim4', 'stim5', 'stim6'])
+        return stim_df
+
+    if 6 not in history['stim'].values:
+        print('detected 4 stimuli, calculating probabilities...')
+        history['stim1_wr'] = (history['side'] == 114) & (history['stim'] == 1) & (history['hits'] == 1)
+        history['stim2_wr'] = (history['side'] == 114) & (history['stim'] == 2) & (history['hits'] == 1)
+        # for stim 3 and 4 the rat went right, which would be incorrect for those stimuli
+        history['stim3_wr'] = (history['side'] == 108) & (history['stim'] == 3) & (history['hits'] == 0)
+        history['stim4_wr'] = (history['side'] == 108) & (history['stim'] == 4) & (history['hits'] == 0)
+        # sum the above into one variable for each stimuli
+        sum_stim1R = history['stim1_wr'].sum()
+        sum_stim2R = history['stim2_wr'].sum()
+        sum_stim3R = history['stim3_wr'].sum()
+        sum_stim4R = history['stim4_wr'].sum()
+
+        # extract all done trials minus violations and timeouts and calculate percentage
+        done_trials = session.loc['done_trials'] - ((session.loc['violations'] + session.loc['timeouts']) * session.loc['done_trials'])
+        stim1_percR = sum_stim1R/done_trials*100
+        stim2_percR = sum_stim2R/done_trials*100
+        stim3_percR = sum_stim3R/done_trials*100
+        stim4_percR = sum_stim4R/done_trials*100
+
+        # just doing it for left as well to check if it adds up to 100% which it should when timeouts and violations
+        # are not included
+
+        # amount of times the rat went left when stim 1
+        history['stim1_wrL'] = (history['side'] == 114) & (history['stim'] == 1) & (history['hits'] == 0)
+        history['stim2_wrL'] = (history['side'] == 114) & (history['stim'] == 2) & (history['hits'] == 0)
+        # for stim 3 and 4 the rat went left
+        history['stim3_wrL'] = (history['side'] == 108) & (history['stim'] == 3) & (history['hits'] == 1)
+        history['stim4_wrL'] = (history['side'] == 108) & (history['stim'] == 4) & (history['hits'] == 1)
+        # sum the above into one variable for each stimuli
+        sum_stim1L = history['stim1_wrL'].sum()
+        sum_stim2L = history['stim2_wrL'].sum()
+        sum_stim3L = history['stim3_wrL'].sum()
+        sum_stim4L = history['stim4_wrL'].sum()
+        stim1_percL = sum_stim1L / done_trials * 100
+        stim2_percL = sum_stim2L / done_trials * 100
+        stim3_percL = sum_stim3L / done_trials * 100
+        stim4_percL = sum_stim4L / done_trials * 100
+
+        # calculate probability
+        # sum the left and right choices for each given stimulus
+        stim1_sum = sum_stim1R + sum_stim1L
+        stim2_sum = sum_stim2R + sum_stim2L
+        stim3_sum = sum_stim3R + sum_stim3L
+        stim4_sum = sum_stim4R + sum_stim4L
+        # calculate the percentage of right choices for each given stimulus
+        s1_right_prob = sum_stim1R / stim1_sum *100
+        s2_right_prob = sum_stim2R / stim2_sum * 100
+        s3_right_prob = sum_stim3R / stim3_sum * 100
+        s4_right_prob = sum_stim4R / stim4_sum * 100
+
+        # create a dict with all variables to include in dataframe
+        dict = {'Sum right choices': [sum_stim1R, sum_stim2R, sum_stim3R, sum_stim4R],
+                'Perc_R of all done': [stim1_percR, stim2_percR, stim3_percR, stim4_percR],
+                'Sum left choices': [sum_stim1L, sum_stim2L, sum_stim3L, sum_stim4L],
+                'Perc_L of all done': [stim1_percL, stim2_percL, stim3_percL, stim4_percL],
+                'Stimulus trials sum': [stim1_sum, stim2_sum, stim3_sum, stim4_sum],
+                'Right_prob': [s1_right_prob, s2_right_prob, s3_right_prob, s4_right_prob]
+                }
+        stim_df = pd.DataFrame(dict, index=['stim1', 'stim2', 'stim3', 'stim4'])
+        return stim_df
+
+
+def pf(x, alpha, beta):  # pschymetric function
+    return 1. / (1 + np.exp( - (x-alpha)/beta))
+
+
+def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#045a8d'):
+    df = cal_prob(big_df, animal_id, date)
+    right_prob = df['Right_prob'].sort_index(ascending=False)
+    right_prob = (right_prob/100).values
+    stim = np.array([0, 1, 2, 3, 4, 5])  #arbitrary x-axis needs to be same for plotting and p-fit
+    pcurve = plt.plot(stim, right_prob, marker='o', markersize=8, color=col1, linestyle='', label=animal_id)
+    if invert is True: # this might be unneccesary now
+        ax = plt.gca()  # invert x axis to classic direction of curve
+        ax.invert_xaxis()  # invert x axis to classic direction of curve
+    plt.ylabel('Probability of Right choice', fontsize=12)
+    plt.xlabel('Stimulus', fontsize=12)
+    plt.xticks(np.arange(6), ('stim 6', 'stim 5', 'stim 4', 'stim 3', 'stim 2', 'stim 1'), fontsize=9, rotation=0)
+    plt.title('pCurve for '+animal_id + ' on ' + date, fontsize=14)
+
+    # par0 = sy.array([100., 1.]) or sy.array([0., 1.])
+    par, mcov = curve_fit(pf, stim, right_prob)  # fit p curve to data
+    plt.plot(stim, pf(stim, par[0], par[1]), color=col2)  # plot on top of data
+
+    return pcurve
+
+
+def day_pcurve(big_df, animal_list, date):
+    # could include a condition to exclude animals if they do trials below a certain number
+    # need to fix this so different amounts of stimuli are allowed
+    colorlist = ['#82dae0', '#fff0a5', '#b0e5ca', '#e5b0b1', '#b7adc7']
+    col_index = 1
+    pic = plot_pcurve(big_df, animal_list[0], date, col1=colorlist[0], col2=colorlist[0])
+    #animal_names = []
+    #animal_names.append(animal_list[0])
+
+    for animal in animal_list[1:]:
+        print(col_index)
+        if col_index == 5:
+            col_index = 0
+        col1 = colorlist[col_index]
+        try:
+            plot_pcurve(big_df, animal, date, invert=False, col1=col1, col2=col1)
+            #animal_names.append(animal)
+        except:
+            continue
+        col_index += 1
+    plt.title('Pcurves for animals on: ' + date)
+    plt.legend()
+    return pic
+
+
+def animal_pcurve(big_df, animal_id, date_list):
+    # need to fix this so different amounts of stimuli are allowed
+    colorlist = ['#82dae0', '#fff0a5', '#b0e5ca', '#e5b0b1', '#b7adc7']
+    col_index = 1
+    date_index = 0
+    date = date_list[date_index]
+    # include a check for if there is data in the df for the animal
+    while check(sc, animal_id, date) is False:
+        print('no session date for: ' + date)
+        print('proceeding to next date in list')
+        date_index += 1
+        date = date_list[date_index]
+
+    print('first succesful date is: ' + date)
+    pic = plot_pcurve(big_df, animal_id, date, col1=colorlist[0], col2=colorlist[0]) # add a label for date
+    date_index += 1
+    for date in date_list[date_index:]:
+        print('date is: '+ date )
+        print(col_index)
+        if col_index == 5:
+            col_index = 0
+        col1 = colorlist[col_index]
+        try:
+            plot_pcurve(big_df, animal_id, date, invert=False, col1=col1, col2=col1)
+            #animal_names.append(animal)
+        except:
+            continue
+        col_index += 1
+    plt.title('Pcurves for animals on: ' + date)
+    #plt.legend()
+    return pic
+
+# Create the cleaned up SC dataframe, shouldn't need to select animals
+animals = ['AA01', 'AA03', 'AA05', 'AA07', 'DO04', 'DO08', 'SC04', 'SC05',
+           'VP01', 'VP07', 'VP08']
+
+sc = clean_up_df(Animal_df)
+
+date = '2019-08-06'
+day_pcurve(sc, animals, date)
+
+# good example animal and day
+plot_pcurve(sc, 'VP08', '2019-08-06')
+df = cal_prob(sc, 'VP08', '2019-08-06')
+plt.close()
+date_list = sc.index.values
+plot_pcurve(sc, 'VP08', date_list[0])
