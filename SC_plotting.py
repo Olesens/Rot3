@@ -255,6 +255,21 @@ def run_box_plots():
         plt.close()
 
 
+def check(df, animal_id, date):
+    # could maybe modify this a little to be shorter, but it works atm
+    single_animal = df.xs(animal_id, level='animal', axis=1).copy()
+    session = single_animal.loc[date]
+    stim = session['history_stim']
+    try:
+        stim = pd.DataFrame(stim, columns=['stim']).T
+
+    except ValueError:
+        print('Could not extract stimulus history, check that specific animal and session exists')
+        return False
+    else:
+        return True
+
+
 def cal_prob(df, animal_id, date):
     # can definitely bring this baby down in size
     single_animal = df.xs(animal_id, level='animal', axis=1).copy()
@@ -263,15 +278,18 @@ def cal_prob(df, animal_id, date):
     side = session['history_side']
     hits = session['history_hits']
 
+    if check(df, animal_id, date) is False:
+        return None
+
     stim = pd.DataFrame(stim, columns=['stim']).T
     side = pd.DataFrame(side, columns=['side']).T
     hits = pd.DataFrame(hits, columns=['hits']).T
-
     dfs = [side, stim, hits]
     history = pd.concat(dfs)
     history = history.T
 
-    #stage condition
+
+    # stage condition
     if 6 in history['stim'].values:
         print('detected 6 stimuli, calculating probabilities..')
         # amount of times the rat went right when stim 1 was on (which is the correct choice)
@@ -426,7 +444,7 @@ def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#04
     df = cal_prob(big_df, animal_id, date)
     right_prob = df['Right_prob'].sort_index(ascending=False)
     right_prob = (right_prob/100).values
-    stim = np.array([0, 1, 2, 3, 4, 5])
+    stim = np.array([0, 1, 2, 3, 4, 5])  #arbitrary x-axis needs to be same for plotting and p-fit
     pcurve = plt.plot(stim, right_prob, marker='o', markersize=8, color=col1, linestyle='', label=animal_id)
     if invert is True: # this might be unneccesary now
         ax = plt.gca()  # invert x axis to classic direction of curve
@@ -442,13 +460,15 @@ def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#04
 
     return pcurve
 
+
 def day_pcurve(big_df, animal_list, date):
     # could include a condition to exclude animals if they do trials below a certain number
+    # need to fix this so different amounts of stimuli are allowed
     colorlist = ['#82dae0', '#fff0a5', '#b0e5ca', '#e5b0b1', '#b7adc7']
     col_index = 1
     pic = plot_pcurve(big_df, animal_list[0], date, col1=colorlist[0], col2=colorlist[0])
-    animal_names = []
-    animal_names.append(animal_list[0])
+    #animal_names = []
+    #animal_names.append(animal_list[0])
 
     for animal in animal_list[1:]:
         print(col_index)
@@ -466,6 +486,37 @@ def day_pcurve(big_df, animal_list, date):
     return pic
 
 
+def animal_pcurve(big_df, animal_id, date_list):
+    # need to fix this so different amounts of stimuli are allowed
+    colorlist = ['#82dae0', '#fff0a5', '#b0e5ca', '#e5b0b1', '#b7adc7']
+    col_index = 1
+    date_index = 0
+    date = date_list[date_index]
+    # include a check for if there is data in the df for the animal
+    while check(sc, animal_id, date) is False:
+        print('no session date for: ' + date)
+        print('proceeding to next date in list')
+        date_index += 1
+        date = date_list[date_index]
+
+    print('first succesful date is: ' + date)
+    pic = plot_pcurve(big_df, animal_id, date, col1=colorlist[0], col2=colorlist[0]) # add a label for date
+    date_index += 1
+    for date in date_list[date_index:]:
+        print('date is: '+ date )
+        print(col_index)
+        if col_index == 5:
+            col_index = 0
+        col1 = colorlist[col_index]
+        try:
+            plot_pcurve(big_df, animal_id, date, invert=False, col1=col1, col2=col1)
+            #animal_names.append(animal)
+        except:
+            continue
+        col_index += 1
+    plt.title('Pcurves for animals on: ' + date)
+    #plt.legend()
+    return pic
 
 # Create the cleaned up SC dataframe, shouldn't need to select animals
 animals = ['AA01', 'AA03', 'AA05', 'AA07', 'DO04', 'DO08', 'SC04', 'SC05',
@@ -475,16 +526,10 @@ sc = clean_up_df(Animal_df)
 
 date = '2019-08-06'
 day_pcurve(sc, animals, date)
+
 # good example animal and day
 plot_pcurve(sc, 'VP08', '2019-08-06')
 df = cal_prob(sc, 'VP08', '2019-08-06')
 plt.close()
-
-prob = np.array([0.1025,0.1463,0.23255,0.4062,0.72222,0.83720])
-stim = np.array([1,2,3,4,5,6])
-
-df = cal_prob(sc, 'VP08', '2019-08-06')
-proby = df['Right_prob']
-proby = proby.sort_index(ascending=False)
-proby=proby/100
-proby = proby.values
+date_list = sc.index.values
+plot_pcurve(sc, 'VP08', date_list[0])
