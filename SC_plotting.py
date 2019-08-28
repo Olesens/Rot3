@@ -460,46 +460,40 @@ def pf(x, alpha, beta):  # pschymetric function
 
 
 def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#045a8d',
-                stage='ALL', label_type='date', ret_alf=False):
+                stage='ALL', label_type='date', ret_slp=False):
+
     if check(big_df, animal_id, date) is False:  # run check to see if there is data for the session
-        print('Date and/or animal_id failed check, no data for session')
         raise SessionCheckError
 
     df = cal_prob(big_df, animal_id, date)
     right_prob = df['Right_prob'].sort_index(ascending=False)
     right_prob = (right_prob/100).values
 
-    if len(right_prob) == 6: # make length of stim equal to length of right_prob
+    if len(right_prob) == 6:  # make length of stim equal to length of right_prob
         stim = np.array([0, 1, 2, 3, 4, 5])  # arbitrary x-axis needs to be same for plotting and p-fit
         stim_list = ('stim 6', 'stim 5', 'stim 4', 'stim 3', 'stim 2', 'stim 1')
         stim_no = 6
-        if stage==1:  # if only want stage 1 then abort
+        if stage == 1:  # if only want stage 1 then abort
             print('Stage 2 detected, aborted plotting')
             raise StageError
+
     elif len(right_prob) == 4:
         stim = np.array([0, 1, 2, 3])
         stim_list = ('stim 4', 'stim 3', 'stim 2', 'stim 1')
         stim_no = 4
-        if stage==2:  # if only want stage 2 then abort
+        if stage == 2:  # if only want stage 2 then abort
             print('Stage 1 detected, aborted plotting')
             raise StageError
 
-
-    # start by checking that you can fit curve for the data cause if not then don't want to plot the data
-    try:
-        # par0 = sy.array([100., 1.]) or sy.array([0., 1.])
+    try:  # check that you can fit data with p-curve
         par, mcov = curve_fit(pf, stim, right_prob)  # fit p curve to data
-        if ret_alf is True:
+        if ret_slp is True:  # if condition true just return the slope
             slope = par[0]/(4*par[1])
             return slope
-        plt.plot(stim, pf(stim, par[0], par[1]), color=col2)  # plot on top of data
-        print('alpha is: '+ str(par[0]))
-
-
+        plt.plot(stim, pf(stim, par[0], par[1]), color=col2)  # plot the p-curve
+        print('alpha is: ' + str(par[0]))
     except:
         raise PCurveError
-        print('Failed to fit p-curve to data, aborted plotting')
-        #return None
 
     if label_type== 'date':
            label = date
@@ -518,25 +512,24 @@ def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#04
     return pcurve
 
 
-def day_pcurve(big_df, animal_list, date):
+def day_pcurve(big_df, animal_list, date, stage='ALL'):
     # could include a condition to exclude animals if they do trials below a certain number
-    # need to fix this so different amounts of stimuli are allowed
     colorlist = ['#82dae0', '#fff0a5', '#b0e5ca', '#e5b0b1', '#b7adc7']
     col_index = 1
-    pic = plot_pcurve(big_df, animal_list[0], date, col1=colorlist[0], col2=colorlist[0], label_type='animal')
-    #animal_names = []
-    #animal_names.append(animal_list[0])
-
+    pic = plot_pcurve(big_df, animal_list[0], date, col1=colorlist[0], col2=colorlist[0], stage=stage,
+                      label_type='animal')
     for animal in animal_list[1:]:
-        print(col_index)
-        if col_index == 5:
+        if col_index == len(colorlist):
             col_index = 0
         col1 = colorlist[col_index]
         try:
             plot_pcurve(big_df, animal, date, invert=False, col1=col1, col2=col1, label_type='animal')
-            #animal_names.append(animal)
-        except:
-            continue
+        except SessionCheckError:
+            print('SessionCheckError for:  ' + animal + ' ...continuing to next animal...')
+        except StageError:
+            print('StageError for:  ' + animal + ' ...continuing to next animal...')
+        except PCurveError:
+            print('Failed to fit p-curve for:  ' + animal + ' ...continuing to next animal...')
         col_index += 1
     plt.title('Pcurves for animals on: ' + date)
     plt.legend()
@@ -547,19 +540,20 @@ def animal_pcurve(big_df, animal_id, date_list, stage='ALL'):
     # need to fix this so different amounts of stimuli are allowed
     colorlist = ['#BCBD52', '#94B85A', '#6FAF67', '#4FA575', '#349981', '#2A8C88', '#337D89', '#436D84', '#515E79',
                  '#5A4E6A', '#5D4057', '#5A3343', '#522930', '#462120']
-    colorlist2= ['#42201F','#4D282F','#533242','#553E54','#504C65','#455B72','#376A79','#2D787A','#308575','#44916B','#619B5F',
-     '#83A353','#A8A84B','#CEAB4D','#F4AB5A']
+    colorlist2= ['#42201F', '#4D282F', '#533242', '#553E54', '#504C65', '#455B72', '#376A79', '#2D787A', '#308575'
+                , '#44916B', '#619B5F', '#83A353', '#A8A84B', '#CEAB4D', '#F4AB5A']
     col_index = 1
     date_index = 0
     date = date_list[date_index]
 
-    while check(sc, animal_id, date) is False:  # continue to check for data until first succesful day
+    while check(sc, animal_id, date) is False:  # continue to check for data until first successful day
         print('no session date for: ' + date + '   ...proceeding to next date in list')
         date_index += 1
         date = date_list[date_index]
+    print('first successful date is: ' + date)
 
-    print('first succesful date is: ' + date)
-    try:  # problem with this is if
+
+    try:  # problem with this is if its stage 1 the the pic is not created..
         pic = plot_pcurve(big_df, animal_id, date, col1=colorlist[0], col2=colorlist[0], stage=stage) # add label for date
     except StageError:
         col_index=0
@@ -575,35 +569,33 @@ def animal_pcurve(big_df, animal_id, date_list, stage='ALL'):
             plot_pcurve(big_df, animal_id, date, invert=False, col1=col1, col2=col1, stage=stage)
             col_index += 1
             # might not need this to be a try statement anymore because the plot_pcurve function contains a lot of exceptions
+        except SessionCheckError:
+            print('SessionCheckError for:  ' + date + ' ...continuing to next date...')
         except StageError:
-            print('StageError detected')
-            #col_index -= 1
-        except:
-            #col_index -= 1
-            print('Failed to plot curve for:  '+ date + ' continuing iteration through date list')
-            continue
+            print('StageError for:  ' + date + ' ...continuing to next date...')
+        except PCurveError:
+            print('Failed to fit p-curve for:  ' + date + ' ...continuing to next date...')
 
     plt.title('Pcurves for: ' + animal_id + ', stages included: ' + str(stage))
     plt.legend()
-    #return pic
 
 
-def alpha_day(big_df, animal_id, date_list, stage='ALL'):
-    alpha_list = []
+def slope_days(big_df, animal_id, date_list, stage='ALL'):
+    slope_list = []
     successful_date_list = []
     for date in date_list:
         print('next date is: ' + date)
         try:
-            alpha = plot_pcurve(big_df, animal_id, date, stage=stage, ret_alf=True)
-            alpha_list.append(alpha)
+            slope = plot_pcurve(big_df, animal_id, date, stage=stage, ret_slp=True)
+            slope_list.append(slope)
             successful_date_list.append(date)
         except SessionCheckError:
             print('SessionCheckError for:  ' + date + ' ...continuing to next date...')
         except StageError:
             print('StageError for:  ' + date + ' ...continuing to next date...')
-        except:
+        except PCurveError:
             print('Failed to plot curve for:  ' + date + ' ...continuing to next date...')
-    alp_plot = plt.plot(alpha_list, 'go')
+    alp_plot = plt.plot(slope_list, 'go')
     plt.xticks(np.arange(len(successful_date_list)), successful_date_list, fontsize=9, rotation=0)
     plt.title('Slopes over days for: ' + animal_id + ', stages included: ' + str(stage))
     plt.ylabel('Slope value: (alpha/(4*beta')
@@ -622,3 +614,8 @@ date_list = sc.index.values
 #df = cal_prob(sc, 'VP08', '2019-08-06')
 #plt.close()
 #plot_pcurve(sc, 'VP08', date_list[0])
+
+def fig_chech():
+    plt.plot([1,2,3,4])
+    picture = plt.plot([3,4,5,6])
+    return picture
