@@ -270,9 +270,25 @@ def run_box_plots():
         fig_name = 'sc_' + animal + '_boxp'
         plot = boxplot_animal(sc, animal)
         plt.show()
-        plt.savefig('Rot3_data\\' + fig_name + '.png', bbox_inches='tight')
+        plt.savefig('Rot3_data\\SoundCat\\Boxplots\\' + fig_name + '.png', bbox_inches='tight')
         plt.close()
 
+def run_pcurves():
+    for animal in animals:
+        fig_name = 'sc_' + animal + '_pcurve'
+        plot = animal_pcurve(sc, animal, date_list, stage=2)
+        plt.show()
+        plt.savefig('Rot3_data\\SoundCat\\' + fig_name + '.png', bbox_inches='tight')
+        plt.close()
+
+
+def run_slp_plots():
+    for animal in animals:
+        fig_name = 'sc_' + animal + '_slopes'
+        plot = slope_days(sc, animal, date_list, stage=2)
+        plt.show()
+        plt.savefig('Rot3_data\\SoundCat\\' + fig_name + '.png', bbox_inches='tight')
+        plt.close()
 
 def check(df, animal_id, date):
     # could maybe modify this a little to be shorter, but it works atm
@@ -614,8 +630,3 @@ date_list = sc.index.values
 #df = cal_prob(sc, 'VP08', '2019-08-06')
 #plt.close()
 #plot_pcurve(sc, 'VP08', date_list[0])
-
-def fig_chech():
-    plt.plot([1,2,3,4])
-    picture = plt.plot([3,4,5,6])
-    return picture
