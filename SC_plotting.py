@@ -15,7 +15,24 @@ plt.rcParams['text.color'] = 'black'
 pickle_in = open("Rot3_data\\SC_full_df.pkl","rb")
 Animal_df = pickle.load(pickle_in)
 
+# DEFINED ERROR CLASSES
+class Error(Exception):
+    # Error is derived class for Exception, but
+    # Base class for exceptions in this module
+    pass
 
+class StageError(Error):
+    """raised selecting for specific stage which does not correspond to given session"""
+    pass
+
+class PCurveError(Error):
+    pass
+
+class SessionCheckError(Error):
+    pass
+
+
+# CLEAN UP AND CREATE NEW DF FROM RAW
 def clean_up_df(df, animallist=[], index=True, multiindex=True, fixstages=True, duplicates=True):
     """
     :param df: dataframe to take in a clean up
@@ -442,11 +459,11 @@ def pf(x, alpha, beta):  # pschymetric function
     return 1. / (1 + np.exp( - (x-alpha)/beta))
 
 
-def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#045a8d', stage='ALL', label_type='date'):
+def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#045a8d',
+                stage='ALL', label_type='date', ret_alf=False):
     if check(big_df, animal_id, date) is False:  # run check to see if there is data for the session
         print('Date and/or animal_id failed check, no data for session')
         raise SessionCheckError
-        #return None
 
     df = cal_prob(big_df, animal_id, date)
     right_prob = df['Right_prob'].sort_index(ascending=False)
@@ -459,7 +476,6 @@ def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#04
         if stage==1:  # if only want stage 1 then abort
             print('Stage 2 detected, aborted plotting')
             raise StageError
-            #return None
     elif len(right_prob) == 4:
         stim = np.array([0, 1, 2, 3])
         stim_list = ('stim 4', 'stim 3', 'stim 2', 'stim 1')
@@ -467,13 +483,19 @@ def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#04
         if stage==2:  # if only want stage 2 then abort
             print('Stage 1 detected, aborted plotting')
             raise StageError
-            #return None
+
 
     # start by checking that you can fit curve for the data cause if not then don't want to plot the data
     try:
         # par0 = sy.array([100., 1.]) or sy.array([0., 1.])
         par, mcov = curve_fit(pf, stim, right_prob)  # fit p curve to data
+        if ret_alf is True:
+            slope = par[0]/(4*par[1])
+            return slope
         plt.plot(stim, pf(stim, par[0], par[1]), color=col2)  # plot on top of data
+        print('alpha is: '+ str(par[0]))
+
+
     except:
         raise PCurveError
         print('Failed to fit p-curve to data, aborted plotting')
@@ -493,10 +515,6 @@ def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#04
     plt.xticks(np.arange(stim_no), stim_list, fontsize=9, rotation=0)
     plt.title('pCurve for '+animal_id + ' on ' + date, fontsize=14)
 
-    # par0 = sy.array([100., 1.]) or sy.array([0., 1.])
-    # par, mcov = curve_fit(pf, stim, right_prob)  # fit p curve to data
-    # plt.plot(stim, pf(stim, par[0], par[1]), color=col2)  # plot on top of data
-
     return pcurve
 
 
@@ -515,7 +533,7 @@ def day_pcurve(big_df, animal_list, date):
             col_index = 0
         col1 = colorlist[col_index]
         try:
-            plot_pcurve(big_df, animal, date, invert=False, col1=col1, col2=col1)
+            plot_pcurve(big_df, animal, date, invert=False, col1=col1, col2=col1, label_type='animal')
             #animal_names.append(animal)
         except:
             continue
@@ -525,24 +543,12 @@ def day_pcurve(big_df, animal_list, date):
     return pic
 
 
-class Error(Exception):
-    # Error is derived class for Exception, but
-    # Base class for exceptions in this module
-    pass
-
-class StageError(Error):
-    """raised selecting for specific stage which does not correspond to given session"""
-    pass
-
-class PCurveError(Error):
-    pass
-
-class SessionCheckError(Error):
-    pass
-
 def animal_pcurve(big_df, animal_id, date_list, stage='ALL'):
     # need to fix this so different amounts of stimuli are allowed
-    colorlist = ['#82dae0', '#fff0a5', '#b0e5ca', '#e5b0b1', '#b7adc7']
+    colorlist = ['#BCBD52', '#94B85A', '#6FAF67', '#4FA575', '#349981', '#2A8C88', '#337D89', '#436D84', '#515E79',
+                 '#5A4E6A', '#5D4057', '#5A3343', '#522930', '#462120']
+    colorlist2= ['#42201F','#4D282F','#533242','#553E54','#504C65','#455B72','#376A79','#2D787A','#308575','#44916B','#619B5F',
+     '#83A353','#A8A84B','#CEAB4D','#F4AB5A']
     col_index = 1
     date_index = 0
     date = date_list[date_index]
@@ -582,19 +588,37 @@ def animal_pcurve(big_df, animal_id, date_list, stage='ALL'):
     #return pic
 
 
+def alpha_day(big_df, animal_id, date_list, stage='ALL'):
+    alpha_list = []
+    successful_date_list = []
+    for date in date_list:
+        print('next date is: ' + date)
+        try:
+            alpha = plot_pcurve(big_df, animal_id, date, stage=stage, ret_alf=True)
+            alpha_list.append(alpha)
+            successful_date_list.append(date)
+        except SessionCheckError:
+            print('SessionCheckError for:  ' + date + ' ...continuing to next date...')
+        except StageError:
+            print('StageError for:  ' + date + ' ...continuing to next date...')
+        except:
+            print('Failed to plot curve for:  ' + date + ' ...continuing to next date...')
+    alp_plot = plt.plot(alpha_list, 'go')
+    plt.xticks(np.arange(len(successful_date_list)), successful_date_list, fontsize=9, rotation=0)
+    plt.title('Slopes over days for: ' + animal_id + ', stages included: ' + str(stage))
+    plt.ylabel('Slope value: (alpha/(4*beta')
+    return alp_plot
+
+
+
 # Create the cleaned up SC dataframe, shouldn't need to select animals
 animals = ['AA01', 'AA03', 'AA05', 'AA07', 'DO04', 'DO08', 'SC04', 'SC05',
            'VP01', 'VP07', 'VP08']
 sc = clean_up_df(Animal_df)
-
-
-
-#date = '2019-08-06'
-#day_pcurve(sc, animals, date)
+date_list = sc.index.values
 
 # good example animal and day
-plot_pcurve(sc, 'VP08', '2019-08-06')
+#plot_pcurve(sc, 'VP08', '2019-08-06')
 #df = cal_prob(sc, 'VP08', '2019-08-06')
-plt.close()
-date_list = sc.index.values
+#plt.close()
 #plot_pcurve(sc, 'VP08', date_list[0])
