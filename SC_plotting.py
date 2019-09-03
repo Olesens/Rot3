@@ -273,6 +273,7 @@ def run_box_plots():
         plt.savefig('Rot3_data\\SoundCat\\Boxplots\\' + fig_name + '.png', bbox_inches='tight')
         plt.close()
 
+
 def run_pcurves():
     for animal in animals:
         fig_name = 'sc_' + animal + '_pcurve'
@@ -282,14 +283,18 @@ def run_pcurves():
         plt.close()
 
 
-def run_slp_plots():
-    for animal in animals:
-        fig_name = 'sc_' + animal + '_slopes'
-        plot = slope_days(sc, animal, date_list, stage=2)
-        plt.show()
-        plt.savefig('Rot3_data\\SoundCat\\' + fig_name + '.png', bbox_inches='tight')
-        plt.close()
+def run_param_plots():
+    param_list = ['A', 'B', 'C', 'D']
+    for parameter in param_list:
+        for animal in animals:
+            fig_name = 'sc_' + animal + '_param_' + parameter
+            plot = param_days(sc, animal, date_list, stage=2, param=parameter)
+            plt.show()
+            plt.savefig('Rot3_data\\SoundCat\\4PL param plots\\' + fig_name + '.png', bbox_inches='tight')
+            plt.close()
 
+
+# FUNCTION TO CHECK SESSION
 def check(df, animal_id, date):
     # could maybe modify this a little to be shorter, but it works atm
     single_animal = df.xs(animal_id, level='animal', axis=1).copy()
@@ -471,12 +476,14 @@ def cal_prob(df, animal_id, date):
         return stim_df
 
 
-def pf(x, alpha, beta):  # pschymetric function
-    return 1. / (1 + np.exp( - (x-alpha)/beta))
+def pf(x, A, B, C, D):  # psychometric function
+    return D + A / (1 + np.exp((-(x-C))/B)) # athena function
+    #return D + (A - D) / (1.0 + ((x / C) ** (B)))  # matlab function
+    #return 1. / (1 + np.exp(- (x-A)/B))  #original function used, not enough parameters
 
 
 def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#045a8d',
-                stage='ALL', label_type='date', ret_slp=False):
+                stage='ALL', label_type='date', ret_param=False):
 
     if check(big_df, animal_id, date) is False:  # run check to see if there is data for the session
         raise SessionCheckError
@@ -503,10 +510,9 @@ def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#04
 
     try:  # check that you can fit data with p-curve
         par, mcov = curve_fit(pf, stim, right_prob)  # fit p curve to data
-        if ret_slp is True:  # if condition true just return the slope
-            slope = par[0]/(4*par[1])
-            return slope
-        plt.plot(stim, pf(stim, par[0], par[1]), color=col2)  # plot the p-curve
+        if ret_param is True:  # if condition true just return the slope
+            return par
+        plt.plot(stim, pf(stim, par[0], par[1], par[2], par[3]), color=col2)  # plot the p-curve
         print('alpha is: ' + str(par[0]))
     except:
         raise PCurveError
@@ -596,14 +602,35 @@ def animal_pcurve(big_df, animal_id, date_list, stage='ALL'):
     plt.legend()
 
 
-def slope_days(big_df, animal_id, date_list, stage='ALL'):
-    slope_list = []
+def param_days(big_df, animal_id, date_list, stage='ALL', param='B'):
+    param_list = []
     successful_date_list = []
+    title_dict = {'A': 'Minimum asymptote (A)',
+                  'B': 'Slope (B)',
+                  'C': 'Inflection point (C)',
+                  'D': 'Maximum asymptote (D)'}
+
+    param_dict = {'A': 0,
+                  'B': 1,
+                  'C': 2,
+                  'D': 3}
+
+    try:
+        param_no = param_dict[param]
+    except:
+        print('invalid param name entered, try: A, B, C or D')
+
     for date in date_list:
         print('next date is: ' + date)
         try:
-            slope = plot_pcurve(big_df, animal_id, date, stage=stage, ret_slp=True)
-            slope_list.append(slope)
+            par = plot_pcurve(big_df, animal_id, date, stage=stage, ret_param=True)
+            parameter = par[param_no]
+            slope = par[0]/(4*par[1])
+            if param == 'B':
+                param_list.append(slope)
+                print(' its B mate')
+            else:
+                param_list.append(parameter)
             successful_date_list.append(date)
         except SessionCheckError:
             print('SessionCheckError for:  ' + date + ' ...continuing to next date...')
@@ -611,10 +638,10 @@ def slope_days(big_df, animal_id, date_list, stage='ALL'):
             print('StageError for:  ' + date + ' ...continuing to next date...')
         except PCurveError:
             print('Failed to plot curve for:  ' + date + ' ...continuing to next date...')
-    alp_plot = plt.plot(slope_list, 'go')
+    alp_plot = plt.plot(param_list, 'go')
     plt.xticks(np.arange(len(successful_date_list)), successful_date_list, fontsize=9, rotation=0)
-    plt.title('Slopes over days for: ' + animal_id + ', stages included: ' + str(stage))
-    plt.ylabel('Slope value: (alpha/(4*beta')
+    plt.title(title_dict[param] + ' over days for: ' + animal_id + ', stages included: ' + str(stage))
+    plt.ylabel(title_dict[param])
     return alp_plot
 
 
