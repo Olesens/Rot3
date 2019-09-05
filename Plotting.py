@@ -9,7 +9,7 @@ plt.rcParams['axes.facecolor'] = 'FFFFFF'
 plt.rcParams['text.color'] = 'black'
 
 # Load in file
-pickle_in = open("Rot3_data\\Rat_full2_df.pkl","rb")
+pickle_in = open("Rot3_data\\Rat_full_df.pkl","rb")
 Animal_df = pickle.load(pickle_in)
 
 

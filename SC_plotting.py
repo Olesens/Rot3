@@ -15,18 +15,22 @@ plt.rcParams['text.color'] = 'black'
 pickle_in = open("Rot3_data\\SC_full_df.pkl","rb")
 Animal_df = pickle.load(pickle_in)
 
+
 # DEFINED ERROR CLASSES
 class Error(Exception):
     # Error is derived class for Exception, but
     # Base class for exceptions in this module
     pass
 
+
 class StageError(Error):
     """raised selecting for specific stage which does not correspond to given session"""
     pass
 
+
 class PCurveError(Error):
     pass
+
 
 class SessionCheckError(Error):
     pass
@@ -294,6 +298,15 @@ def run_param_plots():
             plt.close()
 
 
+def run_slope_plots():
+    for animal in animals:
+        fig_name = 'sc_' + animal + '_slopes'
+        plot = param_days(sc, animal, date_list, stage=2, param='B')
+        plt.show()
+        plt.savefig('Rot3_data\\SoundCat\\' + fig_name + '.png', bbox_inches='tight')
+        plt.close()
+
+
 # FUNCTION TO CHECK SESSION
 def check(df, animal_id, date):
     # could maybe modify this a little to be shorter, but it works atm
@@ -311,7 +324,7 @@ def check(df, animal_id, date):
 
 
 # PLOTTING PROBABILITIES AND FITTING P-CURVES
-def cal_prob(df, animal_id, date):
+def cal_prob(df, animal_id, date, ret_hist=False):
     # can definitely bring this baby down in size
     single_animal = df.xs(animal_id, level='animal', axis=1).copy()
     session = single_animal.loc[date]
@@ -329,6 +342,8 @@ def cal_prob(df, animal_id, date):
     history = pd.concat(dfs)
     history = history.T
 
+    if ret_hist is True:
+        return history
     # stage condition
     if 6 in history['stim'].values:
         # print('detected 6 stimuli, calculating probabilities..')
@@ -496,6 +511,7 @@ def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#04
         stim = np.array([0, 1, 2, 3, 4, 5])  # arbitrary x-axis needs to be same for plotting and p-fit
         stim_list = ('stim 6', 'stim 5', 'stim 4', 'stim 3', 'stim 2', 'stim 1')
         stim_no = 6
+        stim2 = np.arange(0, 5, 0.01)
         if stage == 1:  # if only want stage 1 then abort
             print('Stage 2 detected, aborted plotting')
             raise StageError
@@ -504,6 +520,7 @@ def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#04
         stim = np.array([0, 1, 2, 3])
         stim_list = ('stim 4', 'stim 3', 'stim 2', 'stim 1')
         stim_no = 4
+        stim2 = np.arange(0, 3, 0.01)
         if stage == 2:  # if only want stage 2 then abort
             print('Stage 1 detected, aborted plotting')
             raise StageError
@@ -512,8 +529,7 @@ def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#04
         par, mcov = curve_fit(pf, stim, right_prob)  # fit p curve to data
         if ret_param is True:  # if condition true just return the slope
             return par
-        plt.plot(stim, pf(stim, par[0], par[1], par[2], par[3]), color=col2)  # plot the p-curve
-        print('alpha is: ' + str(par[0]))
+        plt.plot(stim2, pf(stim2, par[0], par[1], par[2], par[3]), color=col2)  # plot the p-curve
     except:
         raise PCurveError
 
@@ -645,15 +661,13 @@ def param_days(big_df, animal_id, date_list, stage='ALL', param='B'):
     return alp_plot
 
 
-
 # Create the cleaned up SC dataframe, shouldn't need to select animals
 animals = ['AA01', 'AA03', 'AA05', 'AA07', 'DO04', 'DO08', 'SC04', 'SC05',
-           'VP01', 'VP07', 'VP08']
+           'VP01', 'VP07', 'VP08']  # AA03 and SC04 don't do any trials
 sc = clean_up_df(Animal_df)
 date_list = sc.index.values
 
 # good example animal and day
 #plot_pcurve(sc, 'VP08', '2019-08-06')
-#df = cal_prob(sc, 'VP08', '2019-08-06')
-#plt.close()
-#plot_pcurve(sc, 'VP08', date_list[0])
+
+cal_prob(sc, 'VP08', '2019-08-06')
