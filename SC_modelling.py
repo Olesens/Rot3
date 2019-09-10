@@ -8,24 +8,28 @@ from SC_plotting import clean_up_df, cal_prob
 import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
+from sklearn.feature_selection import RFE
+import statsmodels.api as sm
 from sklearn import metrics
+
 import warnings
 warnings.filterwarnings('ignore')
 
 pickle_in = open("Rot3_data\\SC_full_df.pkl","rb")
 Animal_df = pickle.load(pickle_in)
-sc = clean_up_df(Animal_df, ['SC04'])  # create the cleaned up dataframe
+
+animal_id = 'VP01'
+sc = clean_up_df(Animal_df, [animal_id])  # create the cleaned up dataframe
 date_list = sc.index.values
 # do not want to include '2019-08-21' just fyi, should remove that (data is weird).
-
 date = '2019-08-23'
 # create trial data set
 
 
-def trial_df(df, date, ses_no = 1):
+def trial_df(df, animal_id, date, ses_no = 1):  # should add animal ID to this
     session = df.loc[date]
     # make dataframe of raw trials
-    history = cal_prob(df, 'SC04', date, ret_hist=True)
+    history = cal_prob(df, animal_id, date, ret_hist=True)
 
     # if it was not a tm or vio add it to dataset
     trial_index = 1  # we start from the second trial because the first trial dosen't have a previous trial
@@ -63,18 +67,18 @@ def trial_df(df, date, ses_no = 1):
     # create dict
     data_df = pd.DataFrame.from_dict(trial_dict,
                                      orient='index',
-                                     columns=['Ct_wr', 'Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr'])  #csr = correct side right
+                                     columns=['Ct_wr', 'Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr'])  # csr = correct side right
     return data_df
 
 
 
-def all_trials(df, date_list):
+def all_trials(df, animal_id, date_list):
     session_list = []
     session_index = 1
     for session in date_list:
         print('date is: ' +  str(session))
         try:
-            trials = trial_df(df, session, ses_no = session_index)
+            trials = trial_df(df, animal_id, session, ses_no = session_index)
             session_list.append(trials)
             session_index += 1
             print('success')
@@ -85,28 +89,28 @@ def all_trials(df, date_list):
 
 
 def drop_x(df, ct_stim=False, pt_hit=False, pt_stim = False, pt_csr=False):
-    x = df[['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr']]
-    if ct_stim is True:
-        df = df.drop(columns=['Ct_Stim'])
-        x = df[['Pt_Hit', 'Pt_Stim']]
-    if pt_stim is True:
-        df = df.drop(columns=['Pt_Stim'])
-        x = df[['Ct_Stim', 'Pt_Hit']]
-    if pt_hit is True:
-        df = df.drop(columns=['Pt_Hit'])
-        x = df[['Ct_Stim', 'Pt_Stim']]
-    if pt_csr is True:
-        df = df.drop(columns=['Pt_csr'])
-        x = df[['Ct_Stim', 'Pt_Stim', 'Pt_Hit']]
-    #else:
-    #    x = df[['Ct_Stim', 'Pt_Hit', 'Pt_Stim']]
-
+    #x = df[['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr']]
+    x_list = []
+    params = [ct_stim, pt_hit, pt_stim, pt_csr]
+    param_names = ['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr']
+    index = 0
+    for param in params:
+        if param == False:
+            x_list.append(param_names[index])
+        index += 1
+    if len(x_list) == 1:
+        print('Only one column of x data chosen, will cause error downstream, consider adding more x data')
+    x = df[x_list]
     return x
+
 
 
 def train_data(x,y):
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.20, random_state=0)
     logreg = LogisticRegression()
+
+    #rfe = RFE(logreg, 20)  # don't know what the 20 means
+
     logreg.fit(x_train, y_train)  # look up what these values really mean
     y_pred = logreg.predict(x_test)
     cnf_matrix = metrics.confusion_matrix(y_test, y_pred)
@@ -135,12 +139,32 @@ def test_model(df, ct_stim = False, pt_hit = False, pt_stim = False, pt_csr=Fals
     cnf_heatmap((cnf))
     return cnf
 
+def rfe(x,y):
+    logreg = LogisticRegression()
+    rfe = RFE(logreg, 20)
+    rfe = rfe.fit(x, y)
+    print(rfe.support_)
+    print(rfe.ranking_)
+
+    logit_model = sm.Logit(y, x)
+    result = logit_model.fit()
+    print(result.summary2())
+
+
+
+
+
+
 
 # df['Ct_wr'].value_counts()
 # session_df['Ct_wr'].value_counts()
 # sns.countplot(x='Ct_wr', data=session_df, palette='hls')
 # df.isnull().sum()
+# df = df.drop(columns=['Pt_Stim'])
 date = '2019-08-06'
-df = trial_df(sc, date)
+#df = trial_df(sc, animal_id, date)
+
+session_df = all_trials(sc, animal_id, date_list)
+df = session_df
 y = df['Ct_wr']
-session_df = all_trials(sc, date_list)
+x = df[['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr']]
