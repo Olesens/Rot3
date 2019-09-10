@@ -4,31 +4,38 @@ import pickle
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from SC_plotting import clean_up_df, cal_prob
-
 import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import RFE
 import statsmodels.api as sm
 from sklearn import metrics
-
 import warnings
 warnings.filterwarnings('ignore')
 
 pickle_in = open("Rot3_data\\SC_full_df.pkl","rb")
 Animal_df = pickle.load(pickle_in)
 
+# chose animal and potentially data to analyze
 animal_id = 'VP01'
-sc = clean_up_df(Animal_df, [animal_id])  # create the cleaned up dataframe
-date_list = sc.index.values
-# do not want to include '2019-08-21' just fyi, should remove that (data is weird).
 date = '2019-08-23'
+
+# create the cleaned up dataframe
+sc = clean_up_df(Animal_df) # do not want to include '2019-08-21', should remove (data is weird)
+date_list = sc.index.values
+# Notes ....
+# df['Ct_wr'].value_counts()
+# session_df['Ct_wr'].value_counts()
+# sns.countplot(x='Ct_wr', data=session_df, palette='hls')
+# df.isnull().sum()
+# df = df.drop(columns=['Pt_Stim'])
+# df = trial_df(sc, animal_id, date)
+
+
 # create trial data set
 
-
-def trial_df(df, animal_id, date, ses_no = 1):  # should add animal ID to this
-    session = df.loc[date]
-    # make dataframe of raw trials
+# Generate dataframe of all relevant raw trials
+def trial_df(df, animal_id, date, ses_no=1):
     history = cal_prob(df, animal_id, date, ret_hist=True)
 
     # if it was not a tm or vio add it to dataset
@@ -67,9 +74,9 @@ def trial_df(df, animal_id, date, ses_no = 1):  # should add animal ID to this
     # create dict
     data_df = pd.DataFrame.from_dict(trial_dict,
                                      orient='index',
-                                     columns=['Ct_wr', 'Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr'])  # csr = correct side right
+                                     columns=['Ct_wr', 'Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr'])
+    # csr = correct side right
     return data_df
-
 
 
 def all_trials(df, animal_id, date_list):
@@ -88,14 +95,14 @@ def all_trials(df, animal_id, date_list):
     return session_df
 
 
+# Running the logistic regression
 def drop_x(df, ct_stim=False, pt_hit=False, pt_stim = False, pt_csr=False):
-    #x = df[['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr']]
     x_list = []
     params = [ct_stim, pt_hit, pt_stim, pt_csr]
     param_names = ['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr']
     index = 0
     for param in params:
-        if param == False:
+        if param is False:
             x_list.append(param_names[index])
         index += 1
     if len(x_list) == 1:
@@ -104,10 +111,11 @@ def drop_x(df, ct_stim=False, pt_hit=False, pt_stim = False, pt_csr=False):
     return x
 
 
-
 def train_data(x,y):
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.20, random_state=0)
-    logreg = LogisticRegression()
+    logreg = LogisticRegression(penalty='l2',  # L2 regulation
+                                fit_intercept=True,  # include intercept/bias in decision model
+                                )
 
     #rfe = RFE(logreg, 20)  # don't know what the 20 means
 
@@ -122,7 +130,7 @@ def train_data(x,y):
 
 def cnf_heatmap(cnf_matrix):
     fig, ax = plt.subplots()
-    sns.heatmap(pd.DataFrame(cnf_matrix), annot=True, cmap="viridis", fmt='g')
+    sns.heatmap(pd.DataFrame(cnf_matrix), annot=True, cmap="RdPu", fmt='g')
     ax.xaxis.set_label_position("top")
     plt.title('Confusion matrix', y=1.1)
     plt.ylabel('Actual label')
@@ -139,6 +147,7 @@ def test_model(df, ct_stim = False, pt_hit = False, pt_stim = False, pt_csr=Fals
     cnf_heatmap((cnf))
     return cnf
 
+
 def rfe(x,y):
     logreg = LogisticRegression()
     rfe = RFE(logreg, 20)
@@ -151,19 +160,28 @@ def rfe(x,y):
     print(result.summary2())
 
 
+def check_all_models(df):
+    y = df['Ct_wr']
+    cnf_list = []
+    print('Testing model with all params..')
+    cnf0 = test_model(df)
+    cnf_list.append(cnf0)
+    print('Testing model without Ct_stim..')
+    cnf1 = test_model(df, ct_stim=True)
+    cnf_list.append(cnf1)
+    print('Testing model without Pt_hit..')
+    cnf2 = test_model(df, pt_hit=True)
+    cnf_list.append(cnf2)
+    print('Testing model without Pt_stim..')
+    cnf3 = test_model(df, pt_stim=True)
+    cnf_list.append(cnf3)
+    print('Testing model without pt_csr..')
+    cnf4 = test_model(df, pt_csr=True)
+    cnf_list.append(cnf4)
+    return cnf_list
 
 
-
-
-
-# df['Ct_wr'].value_counts()
-# session_df['Ct_wr'].value_counts()
-# sns.countplot(x='Ct_wr', data=session_df, palette='hls')
-# df.isnull().sum()
-# df = df.drop(columns=['Pt_Stim'])
 date = '2019-08-06'
-#df = trial_df(sc, animal_id, date)
-
 session_df = all_trials(sc, animal_id, date_list)
 df = session_df
 y = df['Ct_wr']
