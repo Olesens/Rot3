@@ -11,6 +11,7 @@ from sklearn.feature_selection import RFE
 import statsmodels.api as sm
 from sklearn import metrics
 import warnings
+from statistics import mean
 warnings.filterwarnings('ignore')
 
 pickle_in = open("Rot3_data\\SC_full_df.pkl","rb")
@@ -39,7 +40,7 @@ def trial_df(df, animal_id, date, ses_no=1):
     history = cal_prob(df, animal_id, date, ret_hist=True)
 
     # if it was not a tm or vio add it to dataset
-    trial_index = 1  # we start from the second trial because the first trial dosen't have a previous trial
+    trial_index = 2  # we start from the second trial because the first trial dosen't have a previous trial
     trial_dict = {}
 
     # determine if animal went right or left
@@ -54,17 +55,26 @@ def trial_df(df, animal_id, date, ses_no=1):
     history['right_side_correct'] = history['right_side_correct'].mask(mask, 1)
 
     #return history
+    sensory_list = []  # I suppose I will stil inlude sensory stim from non-hit trials in the mean.
+    # trial[0] is side, trial[1] is stim, trial[2] is hit, trial[3] is went_right, trial[4] is correct side 1=right
+    for tri_number in history.index._values[2:]:
 
-    # trial[0] is side, trial[1] is stim, trial[2] is hit, trial[3] is went_right
-    for tri_number in history.index._values[1:]:
+        pprev_trial = history.ix[(tri_number - 2)]
         prev_trial = history.ix[(tri_number - 1)]
+        if tri_number == 2:
+            sensory_list.append(pprev_trial[1])  # if it is the first instance add the sensory stim from 2 trials back
+        sensory_list.append(prev_trial[1])  # then add previous trials sensory stim
+
+        # create unique index for the df
         trial = history.ix[tri_number]
-        session = 'S' + str(ses_no) + '_ '
+        session = 'S' + str(ses_no) + '_'
         if np.isnan(trial[2]) == False:
             #tri_index_list.append(trial_index)
             if np.isnan(prev_trial[2]) == False:
                 key = str(session + str(trial_index))
-                trial_dict[key] = [trial[3], trial[1], prev_trial[2], prev_trial[1], prev_trial[4]]
+                sen_mean = (mean(sensory_list)/6)
+                trial_dict[key] = [trial[3], trial[1], prev_trial[2], prev_trial[1], prev_trial[4], prev_trial[3],
+                                   pprev_trial[1], sen_mean]
         trial_index += 1
 
     #probably have to figure out how to deal with if the previous trial was a violation or timeout
@@ -74,12 +84,13 @@ def trial_df(df, animal_id, date, ses_no=1):
     # create dict
     data_df = pd.DataFrame.from_dict(trial_dict,
                                      orient='index',
-                                     columns=['Ct_wr', 'Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr'])
+                                     columns=['Ct_wr', 'Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr', 'Pt_wr', 'PPt_stim',
+                                              'Lt_stim'])
     # csr = correct side right
     return data_df
 
 
-def all_trials(df, animal_id, date_list):
+def all_trials(df, animal_id, date_list, dummies=False):
     session_list = []
     session_index = 1
     for session in date_list:
@@ -92,14 +103,30 @@ def all_trials(df, animal_id, date_list):
         except:
             print('could not extract trials for date: ' + str(session) + ' continuing to next date')
     session_df = pd.concat(session_list)
+
+    if dummies is True:
+        column_names = ['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr', 'Pt_wr', 'PPt_stim', 'Lt_stim']
+        cat_vars = ['Ct_Stim', 'Pt_Stim', 'PPt_stim']  # create dummy variables for all the stimuli
+        for var in cat_vars:
+            cat_list = 'var' + '_' + var
+            cat_list = pd.get_dummies(session_df[var], prefix=var)
+            data1 = session_df.join(cat_list)
+            session_df = data1
+        session_df_vars = session_df.columns.values.tolist()
+        to_keep = [i for i in session_df_vars if i not in cat_vars]
+        session_df_final=session_df[to_keep]
+        session_df = session_df_final
+
+
+
     return session_df
 
 
 # Running the logistic regression
-def drop_x(df, ct_stim=False, pt_hit=False, pt_stim = False, pt_csr=False):
+def drop_x(df, ct_stim=False, pt_hit=False, pt_stim = False, pt_csr=False, pt_wr=False, ppt_stim=False, lt_stim=False):
     x_list = []
-    params = [ct_stim, pt_hit, pt_stim, pt_csr]
-    param_names = ['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr']
+    params = [ct_stim, pt_hit, pt_stim, pt_csr, pt_wr, ppt_stim, lt_stim]
+    param_names = ['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr', 'Pt_wr', 'PPt_stim', 'Lt_stim']
     index = 0
     for param in params:
         if param is False:
@@ -139,10 +166,12 @@ def cnf_heatmap(cnf_matrix):
     return None
 
 
-def test_model(df, ct_stim = False, pt_hit = False, pt_stim = False, pt_csr=False):
-    params = [ct_stim, pt_hit, pt_stim, pt_csr]
+def test_model(df, ct_stim = False, pt_hit = False, pt_stim = False, pt_csr=False, pt_wr=False, ppt_stim=False,
+               lt_stim=False):
+    params = [ct_stim, pt_hit, pt_stim, pt_csr, pt_wr, ppt_stim, lt_stim]
     y = df['Ct_wr']
-    x = drop_x(df, ct_stim=params[0], pt_hit=params[1], pt_stim= params[2], pt_csr=params[3])
+    x = drop_x(df, ct_stim=params[0], pt_hit=params[1], pt_stim= params[2], pt_csr=params[3], pt_wr=params[4],
+               ppt_stim=params[5],lt_stim=params[6])
     cnf = train_data(x,y)
     cnf_heatmap((cnf))
     return cnf
@@ -182,7 +211,13 @@ def check_all_models(df):
 
 
 date = '2019-08-06'
-session_df = all_trials(sc, animal_id, date_list)
+session_df = all_trials(sc, animal_id, date_list, dummies=True)
 df = session_df
 y = df['Ct_wr']
-x = df[['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr']]
+#x = df[['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr', 'Pt_wr', 'PPt_stim', 'Lt_stim']]
+x1 = ['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr', 'Pt_wr', 'PPt_stim',
+       'Lt_stim', 'Ct_Stim_1.0', 'Ct_Stim_2.0', 'Ct_Stim_3.0', 'Ct_Stim_4.0',
+       'Ct_Stim_5.0', 'Ct_Stim_6.0', 'Pt_Stim_1.0', 'Pt_Stim_2.0',
+       'Pt_Stim_3.0', 'Pt_Stim_4.0', 'Pt_Stim_5.0', 'Pt_Stim_6.0',
+       'PPt_stim_1.0', 'PPt_stim_2.0', 'PPt_stim_3.0', 'PPt_stim_4.0',
+       'PPt_stim_5.0', 'PPt_stim_6.0']
