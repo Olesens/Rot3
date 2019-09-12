@@ -2,13 +2,17 @@ import pandas as pd
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
+import statsmodels.api as sm
+import math
 from scipy.optimize import curve_fit
 from SC_plotting import clean_up_df, cal_prob
 import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import RFE
-import statsmodels.api as sm
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_curve
+
 from sklearn import metrics
 import warnings
 from statistics import mean
@@ -36,7 +40,7 @@ date_list = sc.index.values
 # create trial data set
 
 # Generate dataframe of all relevant raw trials
-def trial_df(df, animal_id, date, ses_no=1):
+def trial_df(df, animal_id, date, ses_no=1, normalise=False):
     history = cal_prob(df, animal_id, date, ret_hist=True)
 
     # if it was not a tm or vio add it to dataset
@@ -73,8 +77,15 @@ def trial_df(df, animal_id, date, ses_no=1):
             if np.isnan(prev_trial[2]) == False:
                 key = str(session + str(trial_index))
                 sen_mean = (mean(sensory_list)/6)
-                trial_dict[key] = [trial[3], trial[1], prev_trial[2], prev_trial[1], prev_trial[4], prev_trial[3],
-                                   pprev_trial[1], sen_mean]
+                if normalise is True:
+                    ct_st = (trial[1]/6)
+                    pt_st = (prev_trial[1]/6)
+                    ppt_st = (pprev_trial[1]/6)
+                    trial_dict[key] = [trial[3], ct_st, prev_trial[2], pt_st, prev_trial[4], prev_trial[3],
+                                       ppt_st, sen_mean]
+                else:
+                    trial_dict[key] = [trial[3], trial[1], prev_trial[2], prev_trial[1], prev_trial[4], prev_trial[3],
+                                       pprev_trial[1], sen_mean]
         trial_index += 1
 
     #probably have to figure out how to deal with if the previous trial was a violation or timeout
@@ -90,13 +101,13 @@ def trial_df(df, animal_id, date, ses_no=1):
     return data_df
 
 
-def all_trials(df, animal_id, date_list, dummies=False):
+def all_trials(df, animal_id, date_list, dummies=False, normalise=False):
     session_list = []
     session_index = 1
     for session in date_list:
         print('date is: ' +  str(session))
         try:
-            trials = trial_df(df, animal_id, session, ses_no = session_index)
+            trials = trial_df(df, animal_id, session, ses_no = session_index, normalise=normalise)
             session_list.append(trials)
             session_index += 1
             print('success')
@@ -106,7 +117,8 @@ def all_trials(df, animal_id, date_list, dummies=False):
 
     if dummies is True:
         column_names = ['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr', 'Pt_wr', 'PPt_stim', 'Lt_stim']
-        cat_vars = ['Ct_Stim', 'Pt_Stim', 'PPt_stim']  # create dummy variables for all the stimuli
+        #cat_vars = ['Ct_Stim', 'Pt_Stim', 'PPt_stim']  # create dummy variables for all the stimuli
+        cat_vars = ['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr', 'Pt_wr', 'PPt_stim']  # dummies for everything
         for var in cat_vars:
             cat_list = 'var' + '_' + var
             cat_list = pd.get_dummies(session_df[var], prefix=var)
@@ -138,9 +150,9 @@ def drop_x(df, ct_stim=False, pt_hit=False, pt_stim = False, pt_csr=False, pt_wr
     return x
 
 
-def train_data(x,y):
+def train_data(x,y, auc=False):
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.20, random_state=0)
-    logreg = LogisticRegression(penalty='l2',  # L2 regulation
+    logreg = LogisticRegression(penalty='l2',  # L2 regulation to avoid overfitting
                                 fit_intercept=True,  # include intercept/bias in decision model
                                 )
 
@@ -152,6 +164,26 @@ def train_data(x,y):
     print("Accuracy:", metrics.accuracy_score(y_test, y_pred))
     print("Precision:", metrics.precision_score(y_test, y_pred))
     print("Recall:", metrics.recall_score(y_test, y_pred))
+    parameters = logreg.coef_
+    print(parameters)
+
+    # AUC
+    if auc is True:
+        logit_roc_auc = roc_auc_score(y_test, y_pred)
+        fpr, tpr, thresholds = roc_curve(y_test, logreg.predict_proba(x_test)[:,1])
+        plt.figure()
+        plt.plot(fpr, tpr, label='Logistic Regression (area = %0.2f)' %logit_roc_auc)
+        plt.plot([0,1], [0, 1], 'r--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver operating characteristic')
+        plt.legend(loc='lower right')
+        plt.savefig('Log_ROC')
+        plt.show()
+
+
     return cnf_matrix
 
 
@@ -179,7 +211,7 @@ def test_model(df, ct_stim = False, pt_hit = False, pt_stim = False, pt_csr=Fals
 
 def rfe(x,y):
     logreg = LogisticRegression()
-    rfe = RFE(logreg, 20)
+    rfe = RFE(logreg, 7)
     rfe = rfe.fit(x, y)
     print(rfe.support_)
     print(rfe.ranking_)
@@ -208,6 +240,17 @@ def check_all_models(df):
     cnf4 = test_model(df, pt_csr=True)
     cnf_list.append(cnf4)
     return cnf_list
+
+
+# Trying to perform cross-validation
+def cv(log_mod, log_null, obvs):
+    cv = ((mod - null) / obvs) / log(2)
+    return cv
+
+
+
+
+
 
 
 date = '2019-08-06'
