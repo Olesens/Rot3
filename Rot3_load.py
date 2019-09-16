@@ -192,7 +192,7 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder):
                        'history_vio': rat_values['AthenaDelayComp_violation_history'],
                        'history_hits': rat_values['AthenaDelayComp_hit_history'],
                        'history_pair': rat_values['AthenaDelayComp_pair_history'],
-                       'history_tm': rat_values['AthenaDelayComp_timeout_history']
+                       'history_tm': rat_values['AthenaDelayComp_timeout_history'],
                        'history_side': rat_values['SideSection_previous_sides']
                        }
 
