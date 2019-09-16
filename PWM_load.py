@@ -191,7 +191,7 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder):
                        'hits_total': rat_values['OverallPerformanceSection_hit_frac'],
                        'history_vio': rat_values['AthenaDelayComp_violation_history'],
                        'history_hits': rat_values['AthenaDelayComp_hit_history'],
-                       'history_pair': rat_values['AthenaDelayComp_pair_history'],
+                       'history_pair': rat_values['AthenaDelayComp_pair_history'],  # these are stimulus pairs
                        'history_tm': rat_values['AthenaDelayComp_timeout_history']
                        'history_side': rat_values['SideSection_previous_sides']
                        }
@@ -250,7 +250,7 @@ def create_all_dfs(data_folder):
 
 
 
-def save_dataframe(dataframe, name = 'Rat_full_df'):
+def save_dataframe(dataframe, name = 'PWM_full_df'):
     # Save large dataframe in project
     with open("Rot3_data\\" + name + ".pkl", "wb") as f:
         pickle.dump(dataframe, f)
@@ -258,7 +258,7 @@ def save_dataframe(dataframe, name = 'Rat_full_df'):
 #data_folder = r'H:\ratter\SoloData\Data'
 #rat_df_list = create_all_dfs(data_folder)
 #Rat_full = pd.concat(rat_df_list)
-#save_dataframe(Rat_full, name='Rat_full_df')
+#save_dataframe(Rat_full, name='PWM_full_df')
 
 create_rat_dict('data_@AthenaDelayComp_athena_AA02_190807a.mat', r'H:\ratter\SoloData\Data\athena\AA02' )
 
