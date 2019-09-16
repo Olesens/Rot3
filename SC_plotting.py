@@ -16,6 +16,27 @@ pickle_in = open("Rot3_data\\SC_full_df.pkl","rb")
 Animal_df = pickle.load(pickle_in)
 
 
+# DEFINED ERROR CLASSES
+class Error(Exception):
+    # Error is derived class for Exception, but
+    # Base class for exceptions in this module
+    pass
+
+
+class StageError(Error):
+    """raised selecting for specific stage which does not correspond to given session"""
+    pass
+
+
+class PCurveError(Error):
+    pass
+
+
+class SessionCheckError(Error):
+    pass
+
+
+# CLEAN UP AND CREATE NEW DF FROM RAW
 def clean_up_df(df, animallist=[], index=True, multiindex=True, fixstages=True, duplicates=True):
     """
     :param df: dataframe to take in a clean up
@@ -54,6 +75,7 @@ def clean_up_df(df, animallist=[], index=True, multiindex=True, fixstages=True, 
     return df
 
 
+# PLOTTING CP, TRIALS, AND WITHIN SESSION TRIAL TYPES
 def plot_cp(df, stage='All'):  # will I even need this for SC?
     if stage != 'All':
         mask = df['stage'] == stage
@@ -179,6 +201,7 @@ def boxplot_animal(df, animal_id, stage='All', percentage = False):
     return boxplot
 
 
+# RUN ALL PLOTS AND UPDATE THEM IN FOLDERS
 def run_all_plots():
     # plot CP duration for all animals
     CP_fig = plot_cp(pwm)
@@ -251,10 +274,40 @@ def run_box_plots():
         fig_name = 'sc_' + animal + '_boxp'
         plot = boxplot_animal(sc, animal)
         plt.show()
-        plt.savefig('Rot3_data\\' + fig_name + '.png', bbox_inches='tight')
+        plt.savefig('Rot3_data\\SoundCat\\Boxplots\\' + fig_name + '.png', bbox_inches='tight')
         plt.close()
 
 
+def run_pcurves():
+    for animal in animals:
+        fig_name = 'sc_' + animal + '_pcurve'
+        plot = animal_pcurve(sc, animal, date_list, stage=2)
+        plt.show()
+        plt.savefig('Rot3_data\\SoundCat\\' + fig_name + '.png', bbox_inches='tight')
+        plt.close()
+
+
+def run_param_plots():
+    param_list = ['A', 'B', 'C', 'D']
+    for parameter in param_list:
+        for animal in animals:
+            fig_name = 'sc_' + animal + '_param_' + parameter
+            plot = param_days(sc, animal, date_list, stage=2, param=parameter)
+            plt.show()
+            plt.savefig('Rot3_data\\SoundCat\\4PL param plots\\' + fig_name + '.png', bbox_inches='tight')
+            plt.close()
+
+
+def run_slope_plots():
+    for animal in animals:
+        fig_name = 'sc_' + animal + '_slopes'
+        plot = param_days(sc, animal, date_list, stage=2, param='B')
+        plt.show()
+        plt.savefig('Rot3_data\\SoundCat\\' + fig_name + '.png', bbox_inches='tight')
+        plt.close()
+
+
+# FUNCTION TO CHECK SESSION
 def check(df, animal_id, date):
     # could maybe modify this a little to be shorter, but it works atm
     single_animal = df.xs(animal_id, level='animal', axis=1).copy()
@@ -264,13 +317,14 @@ def check(df, animal_id, date):
         stim = pd.DataFrame(stim, columns=['stim']).T
 
     except ValueError:
-        print('Could not extract stimulus history, check that specific animal and session exists')
+        #print('Could not extract stimulus history, check that specific animal and session exists')
         return False
     else:
         return True
 
 
-def cal_prob(df, animal_id, date):
+# PLOTTING PROBABILITIES AND FITTING P-CURVES
+def cal_prob(df, animal_id, date, ret_hist=False):
     # can definitely bring this baby down in size
     single_animal = df.xs(animal_id, level='animal', axis=1).copy()
     session = single_animal.loc[date]
@@ -288,10 +342,11 @@ def cal_prob(df, animal_id, date):
     history = pd.concat(dfs)
     history = history.T
 
-
+    if ret_hist is True:
+        return history
     # stage condition
     if 6 in history['stim'].values:
-        print('detected 6 stimuli, calculating probabilities..')
+        # print('detected 6 stimuli, calculating probabilities..')
         # amount of times the rat went right when stim 1 was on (which is the correct choice)
         history['stim1_wr'] = (history['side'] == 114) & (history['stim'] == 1) & (history['hits'] == 1)
         history['stim2_wr'] = (history['side'] == 114) & (history['stim'] == 2) & (history['hits'] == 1)
@@ -374,7 +429,7 @@ def cal_prob(df, animal_id, date):
         return stim_df
 
     if 6 not in history['stim'].values:
-        print('detected 4 stimuli, calculating probabilities...')
+        # print('detected 4 stimuli, calculating probabilities...')
         history['stim1_wr'] = (history['side'] == 114) & (history['stim'] == 1) & (history['hits'] == 1)
         history['stim2_wr'] = (history['side'] == 114) & (history['stim'] == 2) & (history['hits'] == 1)
         # for stim 3 and 4 the rat went right, which would be incorrect for those stimuli
@@ -436,100 +491,183 @@ def cal_prob(df, animal_id, date):
         return stim_df
 
 
-def pf(x, alpha, beta):  # pschymetric function
-    return 1. / (1 + np.exp( - (x-alpha)/beta))
+def pf(x, A, B, C, D):  # psychometric function
+    return D + A / (1 + np.exp((-(x-C))/B)) # athena function
+    #return D + (A - D) / (1.0 + ((x / C) ** (B)))  # matlab function
+    #return 1. / (1 + np.exp(- (x-A)/B))  #original function used, not enough parameters
 
 
-def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#045a8d'):
+def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#045a8d',
+                stage='ALL', label_type='date', ret_param=False):
+
+    if check(big_df, animal_id, date) is False:  # run check to see if there is data for the session
+        raise SessionCheckError
+
     df = cal_prob(big_df, animal_id, date)
     right_prob = df['Right_prob'].sort_index(ascending=False)
     right_prob = (right_prob/100).values
-    stim = np.array([0, 1, 2, 3, 4, 5])  #arbitrary x-axis needs to be same for plotting and p-fit
-    pcurve = plt.plot(stim, right_prob, marker='o', markersize=8, color=col1, linestyle='', label=animal_id)
+
+    if len(right_prob) == 6:  # make length of stim equal to length of right_prob
+        stim = np.array([0, 1, 2, 3, 4, 5])  # arbitrary x-axis needs to be same for plotting and p-fit
+        stim_list = ('stim 6', 'stim 5', 'stim 4', 'stim 3', 'stim 2', 'stim 1')
+        stim_no = 6
+        stim2 = np.arange(0, 5, 0.01)
+        if stage == 1:  # if only want stage 1 then abort
+            print('Stage 2 detected, aborted plotting')
+            raise StageError
+
+    elif len(right_prob) == 4:
+        stim = np.array([0, 1, 2, 3])
+        stim_list = ('stim 4', 'stim 3', 'stim 2', 'stim 1')
+        stim_no = 4
+        stim2 = np.arange(0, 3, 0.01)
+        if stage == 2:  # if only want stage 2 then abort
+            print('Stage 1 detected, aborted plotting')
+            raise StageError
+
+    try:  # check that you can fit data with p-curve
+        par, mcov = curve_fit(pf, stim, right_prob)  # fit p curve to data
+        if ret_param is True:  # if condition true just return the slope
+            return par
+        plt.plot(stim2, pf(stim2, par[0], par[1], par[2], par[3]), color=col2)  # plot the p-curve
+    except:
+        raise PCurveError
+
+    if label_type== 'date':
+           label = date
+    elif label_type== 'animal':
+           label = animal_id
+
+    pcurve = plt.plot(stim, right_prob, marker='o', markersize=8, color=col1, linestyle='', label=label)
     if invert is True: # this might be unneccesary now
         ax = plt.gca()  # invert x axis to classic direction of curve
         ax.invert_xaxis()  # invert x axis to classic direction of curve
     plt.ylabel('Probability of Right choice', fontsize=12)
     plt.xlabel('Stimulus', fontsize=12)
-    plt.xticks(np.arange(6), ('stim 6', 'stim 5', 'stim 4', 'stim 3', 'stim 2', 'stim 1'), fontsize=9, rotation=0)
+    plt.xticks(np.arange(stim_no), stim_list, fontsize=9, rotation=0)
     plt.title('pCurve for '+animal_id + ' on ' + date, fontsize=14)
-
-    # par0 = sy.array([100., 1.]) or sy.array([0., 1.])
-    par, mcov = curve_fit(pf, stim, right_prob)  # fit p curve to data
-    plt.plot(stim, pf(stim, par[0], par[1]), color=col2)  # plot on top of data
 
     return pcurve
 
 
-def day_pcurve(big_df, animal_list, date):
+def day_pcurve(big_df, animal_list, date, stage='ALL'):
     # could include a condition to exclude animals if they do trials below a certain number
-    # need to fix this so different amounts of stimuli are allowed
     colorlist = ['#82dae0', '#fff0a5', '#b0e5ca', '#e5b0b1', '#b7adc7']
     col_index = 1
-    pic = plot_pcurve(big_df, animal_list[0], date, col1=colorlist[0], col2=colorlist[0])
-    #animal_names = []
-    #animal_names.append(animal_list[0])
-
+    pic = plot_pcurve(big_df, animal_list[0], date, col1=colorlist[0], col2=colorlist[0], stage=stage,
+                      label_type='animal')
     for animal in animal_list[1:]:
-        print(col_index)
-        if col_index == 5:
+        if col_index == len(colorlist):
             col_index = 0
         col1 = colorlist[col_index]
         try:
-            plot_pcurve(big_df, animal, date, invert=False, col1=col1, col2=col1)
-            #animal_names.append(animal)
-        except:
-            continue
+            plot_pcurve(big_df, animal, date, invert=False, col1=col1, col2=col1, label_type='animal')
+        except SessionCheckError:
+            print('SessionCheckError for:  ' + animal + ' ...continuing to next animal...')
+        except StageError:
+            print('StageError for:  ' + animal + ' ...continuing to next animal...')
+        except PCurveError:
+            print('Failed to fit p-curve for:  ' + animal + ' ...continuing to next animal...')
         col_index += 1
     plt.title('Pcurves for animals on: ' + date)
     plt.legend()
     return pic
 
 
-def animal_pcurve(big_df, animal_id, date_list):
+def animal_pcurve(big_df, animal_id, date_list, stage='ALL'):
     # need to fix this so different amounts of stimuli are allowed
-    colorlist = ['#82dae0', '#fff0a5', '#b0e5ca', '#e5b0b1', '#b7adc7']
+    colorlist = ['#BCBD52', '#94B85A', '#6FAF67', '#4FA575', '#349981', '#2A8C88', '#337D89', '#436D84', '#515E79',
+                 '#5A4E6A', '#5D4057', '#5A3343', '#522930', '#462120']
+    colorlist2= ['#42201F', '#4D282F', '#533242', '#553E54', '#504C65', '#455B72', '#376A79', '#2D787A', '#308575'
+                , '#44916B', '#619B5F', '#83A353', '#A8A84B', '#CEAB4D', '#F4AB5A']
     col_index = 1
     date_index = 0
     date = date_list[date_index]
-    # include a check for if there is data in the df for the animal
-    while check(sc, animal_id, date) is False:
-        print('no session date for: ' + date)
-        print('proceeding to next date in list')
+
+    while check(sc, animal_id, date) is False:  # continue to check for data until first successful day
+        print('no session date for: ' + date + '   ...proceeding to next date in list')
         date_index += 1
         date = date_list[date_index]
+    print('first successful date is: ' + date)
 
-    print('first succesful date is: ' + date)
-    pic = plot_pcurve(big_df, animal_id, date, col1=colorlist[0], col2=colorlist[0]) # add a label for date
+
+    try:  # problem with this is if its stage 1 the the pic is not created..
+        pic = plot_pcurve(big_df, animal_id, date, col1=colorlist[0], col2=colorlist[0], stage=stage) # add label for date
+    except StageError:
+        col_index=0
+    # will get error now, I don't but am unsure if the first gets created properly
     date_index += 1
     for date in date_list[date_index:]:
-        print('date is: '+ date )
-        print(col_index)
-        if col_index == 5:
+        if col_index == len(colorlist):
             col_index = 0
         col1 = colorlist[col_index]
+        print('next date is: ' + date + 'col = ' + str(col_index))
+
         try:
-            plot_pcurve(big_df, animal_id, date, invert=False, col1=col1, col2=col1)
-            #animal_names.append(animal)
-        except:
-            continue
-        col_index += 1
-    plt.title('Pcurves for animals on: ' + date)
-    #plt.legend()
-    return pic
+            plot_pcurve(big_df, animal_id, date, invert=False, col1=col1, col2=col1, stage=stage)
+            col_index += 1
+            # might not need this to be a try statement anymore because the plot_pcurve function contains a lot of exceptions
+        except SessionCheckError:
+            print('SessionCheckError for:  ' + date + ' ...continuing to next date...')
+        except StageError:
+            print('StageError for:  ' + date + ' ...continuing to next date...')
+        except PCurveError:
+            print('Failed to fit p-curve for:  ' + date + ' ...continuing to next date...')
+
+    plt.title('Pcurves for: ' + animal_id + ', stages included: ' + str(stage))
+    plt.legend()
+
+
+def param_days(big_df, animal_id, date_list, stage='ALL', param='B'):
+    param_list = []
+    successful_date_list = []
+    title_dict = {'A': 'Minimum asymptote (A)',
+                  'B': 'Slope (B)',
+                  'C': 'Inflection point (C)',
+                  'D': 'Maximum asymptote (D)'}
+
+    param_dict = {'A': 0,
+                  'B': 1,
+                  'C': 2,
+                  'D': 3}
+
+    try:
+        param_no = param_dict[param]
+    except:
+        print('invalid param name entered, try: A, B, C or D')
+
+    for date in date_list:
+        print('next date is: ' + date)
+        try:
+            par = plot_pcurve(big_df, animal_id, date, stage=stage, ret_param=True)
+            parameter = par[param_no]
+            slope = par[0]/(4*par[1])
+            if param == 'B':
+                param_list.append(slope)
+                print(' its B mate')
+            else:
+                param_list.append(parameter)
+            successful_date_list.append(date)
+        except SessionCheckError:
+            print('SessionCheckError for:  ' + date + ' ...continuing to next date...')
+        except StageError:
+            print('StageError for:  ' + date + ' ...continuing to next date...')
+        except PCurveError:
+            print('Failed to plot curve for:  ' + date + ' ...continuing to next date...')
+    alp_plot = plt.plot(param_list, 'go')
+    plt.xticks(np.arange(len(successful_date_list)), successful_date_list, fontsize=9, rotation=0)
+    plt.title(title_dict[param] + ' over days for: ' + animal_id + ', stages included: ' + str(stage))
+    plt.ylabel(title_dict[param])
+    return alp_plot
+
 
 # Create the cleaned up SC dataframe, shouldn't need to select animals
 animals = ['AA01', 'AA03', 'AA05', 'AA07', 'DO04', 'DO08', 'SC04', 'SC05',
-           'VP01', 'VP07', 'VP08']
-
+           'VP01', 'VP07', 'VP08']  # AA03 and SC04 don't do any trials
 sc = clean_up_df(Animal_df)
-
-date = '2019-08-06'
-day_pcurve(sc, animals, date)
+date_list = sc.index.values
 
 # good example animal and day
-plot_pcurve(sc, 'VP08', '2019-08-06')
-df = cal_prob(sc, 'VP08', '2019-08-06')
-plt.close()
-date_list = sc.index.values
-plot_pcurve(sc, 'VP08', date_list[0])
+#plot_pcurve(sc, 'VP08', '2019-08-06')
+
+cal_prob(sc, 'VP08', '2019-08-06')
