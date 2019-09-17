@@ -81,7 +81,7 @@ for parameter in param_list:
     param_list_refined.append(parameter.replace('.', '_'))
 
 
-def create_rat_dict(file_name=file_name, data_folder=data_folder, return_keys=False):
+def create_rat_dict(file_name='', data_folder='', return_keys=False):
     """
     Extract features specified in param_list from matlab file in data_folder and creates a dictionary of the features
     with a tuple (animal_id, date) as key
@@ -93,6 +93,8 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder, return_keys=Fa
             Example: file_name = 'data_@AthenaDelayComp_athena_AA01_190502a.mat'
     :param data_folder: full path to folder containing above file.
             Example: data_folder = r'H:\ratter\SoloData\Data\athena\AA01'
+    :param return_keys: only return the keys(headers of column names for the matlab features)
+    :type return_keys: bool
 
     :return: dictionary containing values for all headers
     """
@@ -140,6 +142,7 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder, return_keys=Fa
         start_time = rat_values['SavingSection_settings_file_load_time']
 
     # create new dictionary for rat with headers as keys and add appropriate values
+    # ADD FEATURES HERE IF YOU WANT THEM INCLUDED
     rat_val_headers = {'file': rat_values['file_name'],
                        'settings_file': rat_values['SavingSection_settings_file'],
                        'experimenter': rat_values['SavingSection_experimenter'],
@@ -167,14 +170,12 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder, return_keys=Fa
                        'history_side': rat_values['SideSection_previous_sides']
                        }
 
-    # create nested dict with date as key and rat+date as name
     # use tuple as dict key to create multi-indexing when creating dataframe
-    rat = {(rat_val_headers['animal_id'], date_pd): rat_val_headers}
-    # considering making the dict into a transposed dataframe so just need to merge later on
+    rat_dict = {(rat_val_headers['animal_id'], date_pd): rat_val_headers}
     if return_keys is True:
         return rat_val_headers.keys()
     else:
-        return rat
+        return rat_dict
 
 
 def create_df_from_dict(rat_dict, rat_dict_values_keys):
