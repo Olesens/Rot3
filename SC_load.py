@@ -1,16 +1,9 @@
 import scipy.io as sio
-from pandas import Series, DataFrame
 import pandas as pd
-import numpy as np
 import os
 import pickle
+from pandas import DataFrame
 
-# notes:...
-# multi index accessing (non-transposed)
-# rat_frame['AA01','02-May-2019']
-# rat_frame['AA01']
-# rat_frame.ix['stage',['AA01']] # index comes first cause .ix
-# rat_co = pd.merge(rat_frame,rat2_frame,left_index=True,right_index=True,how='outer')
 
 # list containing the relevant parameter features from the experiment as written in excel file
 param_list = ['ProtocolsSection_n_done_trials',
@@ -206,19 +199,26 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder):
     return rat
 
 
-def create_df_from_dict(rat_dict):
+def create_df_from_dict(rat_dict, rat_dict_values_keys):
     """
-    :param rat_dict: dictionary
-    :return: dataframe in preferred format to easily merge
+    Creates a dataframe from the given rat_dicts, with rat_dict_values_keys as column names.
+    :param rat_dict:
+    :param rat_dict_values_keys:
+    :return: dataframe for given rat
     """
     # create dataframe
-    rat_frame = DataFrame(rat_dict, index=params_as_headers)  # make the indexing in the same order as Viktor
-    rat_frame = rat_frame.T
-    # append to desired dataframe
+    rat_frame = DataFrame(rat_dict, index=rat_dict_values_keys)
+    rat_frame = rat_frame.T  # transpose so index becomes column names instead.
     return rat_frame
 
 
 def whole_animal_df(animal_folder):
+    """
+    Iterates through all the files in the animal_folder and extract features from the matlab files and create a
+    dataframe to contain it all.
+    :param animal_folder: str
+    :return: Dataframe containing data from all relevant sessions in animal folder
+    """
     df_list = []  # list to contain all dfs
     for filename in os.listdir(animal_folder):
         if filename.endswith('.mat'):
@@ -228,18 +228,20 @@ def whole_animal_df(animal_folder):
             else:
                 rat_session = filename
                 session = create_rat_dict(rat_session, animal_folder)
-                session_df = create_df_from_dict(session)
+                session_dict_values_keys = create_rat_dict(rat_session, animal_folder, return_keys=True)
+                session_df = create_df_from_dict(session, session_dict_values_keys)
                 df_list.append(session_df)
                 print('extraction completed for', filename)
-            continue
+                continue
         else:
             continue
     try:
         animal_df = pd.concat(df_list)
+        return animal_df
     except:
-        print('No files in dict to create df from ')
+        print('No dataframes to concatenate, check that there are files in this folder...')
         return None
-    return animal_df
+
 
 
 def create_all_dfs(data_folder):

@@ -206,6 +206,7 @@ def whole_animal_df(animal_folder):
             session_dict_values_keys = create_rat_dict(rat_session, animal_folder, return_keys=True)
             session_df = create_df_from_dict(session, session_dict_values_keys)
             df_list.append(session_df)
+            print('extraction completed for', filename)
             continue
         else:
             continue
