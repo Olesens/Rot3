@@ -86,7 +86,7 @@ def create_rat_dict(file_name='', data_folder='', return_keys=False):
     with a tuple (animal_id, date) as key
 
     NB: Make sure any features are both in the param_list and also in the rat_val_headers dictionary in this
-    function to make sure it is included in the dictonary (and subsequent dataframes).
+    function to make sure it is included in the dictionary (and subsequent dataframes).
 
     :param file_name: full matlab file name, .mat.
             Example: file_name = 'data_@AthenaDelayComp_athena_AA01_190502a.mat'
