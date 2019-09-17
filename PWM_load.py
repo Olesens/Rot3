@@ -2,9 +2,7 @@ import scipy.io as sio
 import pandas as pd
 import os
 import pickle
-from pandas import Series, DataFrame
-
-import numpy as np
+from pandas import DataFrame
 
 
 # This below dictionary is not used, but a nice reference for what matlab features are extracted
@@ -75,12 +73,13 @@ param_list = ['ProtocolsSection_n_done_trials',
               ]
 
 
-# create new list with parameters, replace . with _ to correctly extract from matlab file
+# Create new list with parameters, replace . with _ to correctly extract from matlab file
 param_list_refined = []
 for parameter in param_list:
     param_list_refined.append(parameter.replace('.', '_'))
 
 
+# Functions for generating dictionaries and subsequently dataframes from matlab files
 def create_rat_dict(file_name='', data_folder='', return_keys=False):
     """
     Extract features specified in param_list from matlab file in data_folder and creates a dictionary of the features
@@ -180,17 +179,24 @@ def create_rat_dict(file_name='', data_folder='', return_keys=False):
 
 def create_df_from_dict(rat_dict, rat_dict_values_keys):
     """
-    :param rat_dict: dictionary
-    :return: dataframe in preferred format to easily merge
+    Creates a dataframe from the given rat_dicts, with rat_dict_values_keys as column names.
+    :param rat_dict:
+    :param rat_dict_values_keys:
+    :return: dataframe for given rat
     """
     # create dataframe
-    rat_frame = DataFrame(rat_dict, index=rat_dict_values_keys)  # make the indexing in the same order as Viktor
-    rat_frame = rat_frame.T
-    # append to desired dataframe
+    rat_frame = DataFrame(rat_dict, index=rat_dict_values_keys)
+    rat_frame = rat_frame.T  # transpose so index becomes column names instead.
     return rat_frame
 
 
 def whole_animal_df(animal_folder):
+    """
+    Iterates through all the files in the animal_folder and extract features from the matlab files and create a
+    dataframe to contain it all.
+    :param animal_folder: str
+    :return: Dataframe containing data from all relevant sessions in animal folder
+    """
     df_list = []  # list to contain all dfs
     for filename in os.listdir(animal_folder):
         if filename.endswith('.mat'):
@@ -203,12 +209,20 @@ def whole_animal_df(animal_folder):
             continue
         else:
             continue
-    animal_df = pd.concat(df_list)
-    return animal_df
+    try:
+        animal_df = pd.concat(df_list)
+        return animal_df
+    except:
+        print('No dataframes to concatenate, check that there are files in this folder...')
+        return None
 
 
-def create_all_dfs(data_folder):
-    # can make a list of experimenters to include if only some are required
+def create_list_of_dfs(data_folder):
+    """
+    Iterates through animal folders in each experimenter folder to extract relevant data from matlab files
+    :param data_folder: datafolder to iterate through. Usually the ratter/SoloData/Data
+    :return: list of dataframes for all relevant animal sessions in datafodler.
+    """
     rat_df_list = []
     for experimenter in os.listdir(data_folder):
         if experimenter != 'experimenter':
@@ -225,7 +239,7 @@ def create_all_dfs(data_folder):
     return rat_df_list
 
 
-# GENERATE AND SAVE THE FULL DATAFRAME #
+# GENERATE AND SAVE THE FULL DATAFRAME
 def save_df(dataframe, name='PWM_full_df', folder="Rot3_data\\"):
     """
     Save dataframe under specified name in folder using pickle
@@ -257,7 +271,7 @@ def create_pwm_df(datafolder=r'H:\ratter\SoloData\Data', save=True, name='PWM_fu
 
     :return: Complete PWM dataframe
     """
-    pwm_df_list = create_all_dfs(data_folder)  # creates all dfs for all relevant files in given datafolder
+    pwm_df_list = create_list_of_dfs(data_folder)  # creates all dfs for all relevant files in given datafolder
     pwm_full_df = pd.concat(pwm_df_list)  # concatenates all dfs into one dataframe
     if save is True:
         save_df(pwm_full_df, name=name, folder=folder)
