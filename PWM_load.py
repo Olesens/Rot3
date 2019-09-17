@@ -5,13 +5,9 @@ import numpy as np
 import os
 import pickle
 
-# notes:...
-# multi index accessing (non-transposed)
-# rat_frame['AA01','02-May-2019']
-# rat_frame['AA01']
-# rat_frame.ix['stage',['AA01']] # index comes first cause .ix
-# rat_co = pd.merge(rat_frame,rat2_frame,left_index=True,right_index=True,how='outer')
 
+
+### INCLUDE IN PARAM_LIST FEATURES TO BE EXTRACTED FROM MATLAB FILE  ###
 # list containing the relevant parameter features from the experiment as written in excel file
 param_list = ['ProtocolsSection_n_done_trials',
               'SavingSection.settings.file',
@@ -100,8 +96,8 @@ params_to_headers = {'ProtocolsSection_n_done_trials': 'done_trials',
                      'AthenaDelayComp_violation_history': 'history_vio',
                      'AthenaDelayComp_hit_history': 'history_hits',
                      'AthenaDelayComp_pair_history': 'history_pair',
-                     'AthenaDelayComp_timeout_history': 'history_tm'
-                     # add side history
+                     'AthenaDelayComp_timeout_history': 'history_tm',
+                     'SideSection_previous_sides': 'history_side'
                      }
 
 # create new list with parameters, replace . with _ to correctly extract from matlab file
@@ -114,7 +110,7 @@ data_folder = r'H:\ratter\SoloData\Data\athena\AA01'
 file_name = 'data_@AthenaDelayComp_athena_AA01_190502a.mat'
 
 
-def create_rat_dict(file_name=file_name, data_folder=data_folder):
+def create_rat_dict(file_name=file_name, data_folder=data_folder, return_keys=False):
     """
     :param file_name: full matlab file name, .mat
     :param data_folder: full path to folder containing above file
@@ -200,16 +196,19 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder):
     # use tuple as dict key to create multi-indexing when creating dataframe
     rat = {(rat_val_headers['animal_id'], date_pd): rat_val_headers}
     # considering making the dict into a transposed dataframe so just need to merge later on
-    return rat
+    if return_keys is True:
+        return rat_val_headers.keys()
+    else:
+        return rat
 
 
-def create_df_from_dict(rat_dict):
+def create_df_from_dict(rat_dict, rat_dict_values_keys):
     """
     :param rat_dict: dictionary
     :return: dataframe in preferred format to easily merge
     """
     # create dataframe
-    rat_frame = DataFrame(rat_dict, index=params_as_headers)  # make the indexing in the same order as Viktor
+    rat_frame = DataFrame(rat_dict, index=rat_dict_values_keys)  # make the indexing in the same order as Viktor
     rat_frame = rat_frame.T
     # append to desired dataframe
     return rat_frame
@@ -222,18 +221,14 @@ def whole_animal_df(animal_folder):
             print("extracting data from..", filename)
             rat_session = filename
             session = create_rat_dict(rat_session, animal_folder)
-            session_df = create_df_from_dict(session)
+            session_dict_values_keys = create_rat_dict(rat_session, animal_folder, return_keys=True)
+            session_df = create_df_from_dict(session, session_dict_values_keys)
             df_list.append(session_df)
             continue
         else:
             continue
-    try:
-        animal_df = pd.concat(df_list)
-        return animal_df
-    except:
-        print('Whole_animal_df error: no files in animal folder to concatenate')
-        return None
-
+    animal_df = pd.concat(df_list)
+    return animal_df
 
 
 def create_all_dfs(data_folder):
@@ -255,7 +250,7 @@ def create_all_dfs(data_folder):
 
 
 
-def save_dataframe(dataframe, name = 'Rat_full_df'):
+def save_dataframe(dataframe, name = 'PWM_full_df'):
     # Save large dataframe in project
     with open("Rot3_data\\" + name + ".pkl", "wb") as f:
         pickle.dump(dataframe, f)
@@ -263,7 +258,7 @@ def save_dataframe(dataframe, name = 'Rat_full_df'):
 #data_folder = r'H:\ratter\SoloData\Data'
 #rat_df_list = create_all_dfs(data_folder)
 #Rat_full = pd.concat(rat_df_list)
-#save_dataframe(Rat_full, name='Rat_full_df')
+#save_dataframe(Rat_full, name='PWM_full_df')
 
 #create_rat_dict('data_@AthenaDelayComp_athena_AA02_190807a.mat', r'H:\ratter\SoloData\Data\athena\AA02' )
 
