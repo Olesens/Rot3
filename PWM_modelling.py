@@ -39,6 +39,38 @@ date_list3 = ['2019-06-19', '2019-06-20',
        '2019-07-15', '2019-07-16', '2019-07-17']  # stage 2
 animals = ['AA02', 'AA04', 'AA06', 'AA08', 'DO01', 'DO02', 'DO05', 'DO06',
            'SC01', 'SC02', 'SC03', 'SC06', 'VP02', 'VP03', 'VP06']
-session_df = all_trials(pwm, 'AA08', date_list3, dummies=False)
+#session_df = all_trials(pwm, 'AA08', date_list3, dummies=False)
 
 # need to give the cal_prob function a stage option
+
+
+date_list4 = ['2019-07-24', '2019-07-25',
+       '2019-07-26', '2019-07-27', '2019-07-29', '2019-07-30', '2019-07-31',
+       '2019-08-01', '2019-08-02', '2019-08-05', '2019-08-06', '2019-08-07',
+       '2019-08-08', '2019-08-09', '2019-08-12', '2019-08-13', '2019-08-14',
+       '2019-08-15', '2019-08-16', '2019-08-19', '2019-08-20', '2019-08-21',
+       '2019-08-22', '2019-08-23', '2019-08-27', '2019-08-28', '2019-08-29',
+       '2019-08-30', '2019-09-02', '2019-09-03', '2019-09-04', '2019-09-05',
+       '2019-09-06', '2019-09-09', '2019-09-10', '2019-09-11', '2019-09-12',
+       '2019-09-13', '2019-09-16']
+
+
+aa08 = all_trials(pwm, 'AA08', date_list4)
+plot_all_logs(aa08)
+plt.title(' PsuedoR2 for AA08')
+
+aa02 = all_trials(pwm, 'AA02', date_list4)
+plot_all_logs(aa02)
+plt.title(' PsuedoR2 for AA02')
+
+do05 = all_trials(pwm, 'DO05', date_list4)
+plot_all_logs(do05)
+plt.title(' PsuedoR2 for DO05')
+
+sc01 = all_trials(pwm, 'SC01', date_list4)
+plot_all_logs(sc01)
+plt.title(' PsuedoR2 for SC01')
+
+vp06 = all_trials(pwm, 'VP06', date_list4)
+plot_all_logs(vp06)
+plt.title(' PsuedoR2 for VP06')

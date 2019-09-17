@@ -286,15 +286,16 @@ def cv_models_logit(df, plot=False, avoid_nan=False):  # have not figured out in
         result = logit_model.fit_regularized(alpha=1, L1_wt=0.0)
         print(result.summary2())
         #print(result.prsquared)
-        p = np.isnan(result.pvalues).any()
+        p = np.isnan(result.pvalues[0])
         if avoid_nan is True:
             index = 0
             while p == True:  # if there are nan values in the results consider re-running, this is a short term fix.
+                # kind of want to make so it only effect Ct_stim, the result dosen't get negative for the others.
                 print('detected null value, adding to intercept')
                 x['intercept'] = x['intercept'] + 0.02
                 logit_model = sm.Logit(y, x)
                 result = logit_model.fit_regularized(alpha=1, L1_wt=0.0)
-                p = np.isnan(result.pvalues).any()
+                p = np.isnan(result.pvalues[0])
                 index += 1
                 if index == 20:
                     break
