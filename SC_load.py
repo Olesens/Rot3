@@ -307,7 +307,7 @@ def mini_hist():
 
     return history
 
-#create_sc_df()
+create_sc_df()
 #file_name = 'data_@SoundCategorization_athena_AA01_190807a.mat'
 #create_rat_dict(file_name=file_name, data_folder=data_folder)
 

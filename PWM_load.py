@@ -227,8 +227,13 @@ def whole_animal_df(animal_folder):
             continue
         else:
             continue
-    animal_df = pd.concat(df_list)
-    return animal_df
+    try:
+        animal_df = pd.concat(df_list)
+        return animal_df
+    except:
+        print('Whole_animal_df error: no files in animal folder to concatenate')
+        return None
+
 
 
 def create_all_dfs(data_folder):
@@ -260,7 +265,7 @@ def save_dataframe(dataframe, name = 'Rat_full_df'):
 #Rat_full = pd.concat(rat_df_list)
 #save_dataframe(Rat_full, name='Rat_full_df')
 
-create_rat_dict('data_@AthenaDelayComp_athena_AA02_190807a.mat', r'H:\ratter\SoloData\Data\athena\AA02' )
+#create_rat_dict('data_@AthenaDelayComp_athena_AA02_190807a.mat', r'H:\ratter\SoloData\Data\athena\AA02' )
 
 
 
