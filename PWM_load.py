@@ -7,8 +7,8 @@ from pandas import Series, DataFrame
 import numpy as np
 
 
-# dictionary mapping param names to their headers
-# this might not be useful actually, it is currently not being used mainly for own ease
+# This below dictionary is not used, but a nice reference for what matlab features are extracted
+# and what column name they are under in the dataframes.
 params_to_headers = {'ProtocolsSection_n_done_trials': 'done_trials',
                      'SavingSection_settings_file': 'settings_file',
                      'SavingSection_settings_file_load_time': 'start_time',
@@ -41,7 +41,7 @@ params_to_headers = {'ProtocolsSection_n_done_trials': 'done_trials',
                      }
 
 
-### INCLUDE IN PARAM_LIST FEATURES TO BE EXTRACTED FROM MATLAB FILE  ###
+# INCLUDE IN PARAM_LIST FEATURES TO BE EXTRACTED FROM MATLAB FILE
 # list containing the relevant parameter features from the experiment as written in excel file
 param_list = ['ProtocolsSection_n_done_trials',
               'SavingSection.settings.file',
@@ -75,28 +75,30 @@ param_list = ['ProtocolsSection_n_done_trials',
               ]
 
 
-
-
 # create new list with parameters, replace . with _ to correctly extract from matlab file
 param_list_refined = []
-for param in param_list:
-    param_list_refined.append(param.replace('.', '_'))
-
-# define data folder and file name
-data_folder = r'H:\ratter\SoloData\Data\athena\AA01'
-file_name = 'data_@AthenaDelayComp_athena_AA01_190502a.mat'
+for parameter in param_list:
+    param_list_refined.append(parameter.replace('.', '_'))
 
 
 def create_rat_dict(file_name=file_name, data_folder=data_folder, return_keys=False):
     """
-    :param file_name: full matlab file name, .mat
-    :param data_folder: full path to folder containing above file
+    Extract features specified in param_list from matlab file in data_folder and creates a dictionary of the features
+    with a tuple (animal_id, date) as key
+
+    NB: Make sure any features are both in the param_list and also in the rat_val_headers dictionary in this
+    function to make sure it is included in the dictonary (and subsequent dataframes).
+
+    :param file_name: full matlab file name, .mat.
+            Example: file_name = 'data_@AthenaDelayComp_athena_AA01_190502a.mat'
+    :param data_folder: full path to folder containing above file.
+            Example: data_folder = r'H:\ratter\SoloData\Data\athena\AA01'
+
     :return: dictionary containing values for all headers
-    NB! does not check for new headers from the param_list_refined, must be done manually atm.
     """
 
     # load in .mat file contained data, in a format where we can easily extract each parameter value
-    full_path = data_folder + '\\' + file_name # combine filename and folder to create full path
+    full_path = data_folder + '\\' + file_name  # combine filename and folder to create full path
     mat = sio.loadmat(full_path, struct_as_record=False, squeeze_me=True)
     mat_saved = mat['saved']  # save the 'saved' part of the mat files as its own entity
 
@@ -105,6 +107,8 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder, return_keys=Fa
     for param in param_list_refined:
         var = 'mat_saved.' + param
         try:
+            # this expression usually fails if the file is from soundcategorization because some of the matlab
+            # feature names will not be the same for the two types of files. This way we select from pwm.
             rat_values[param] = eval(var)  # eval() runs the var expression
         except:
             print("failed to extract param, most likely soundcategorization file. Nothing returned")
@@ -115,7 +119,7 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder, return_keys=Fa
                    + rat_values['StimulusSection_nTrialsClass3'] + rat_values['StimulusSection_nTrialsClass4']
     left_trials = rat_values['StimulusSection_nTrialsClass5'] + rat_values['StimulusSection_nTrialsClass6'] \
                   + rat_values['StimulusSection_nTrialsClass7'] + rat_values['StimulusSection_nTrialsClass8']
-    # create separate values for date and save time
+    # create separate values for date and savetime
     split = rat_values['SavingSection_SaveTime'].split()  # split into date and time
     date = split[0]
     save_time = split[1]
@@ -135,12 +139,6 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder, return_keys=Fa
         print("time formatting failed")
         start_time = rat_values['SavingSection_settings_file_load_time']
 
-    try:  # Refactor and remove these later
-        a2_time = rat_values['SideSection_A2_time']
-
-    except:
-        a2_time = None
-
     # create new dictionary for rat with headers as keys and add appropriate values
     rat_val_headers = {'file': rat_values['file_name'],
                        'settings_file': rat_values['SavingSection_settings_file'],
@@ -155,7 +153,7 @@ def create_rat_dict(file_name=file_name, data_folder=data_folder, return_keys=Fa
                        'init_CP': rat_values['SideSection_init_CP_duration'],
                        'total_CP': rat_values['SideSection_Total_CP_duration'],
                        'done_trials': rat_values['ProtocolsSection_n_done_trials'],
-                       'A2_time': a2_time,
+                       'A2_time': rat_values['SideSection_A2_time'],
                        'reward_type': rat_values['SideSection_reward_type'],
                        'violations': rat_values['OverallPerformanceSection_violation_rate'],
                        'timeouts': rat_values['OverallPerformanceSection_timeout_rate'],
