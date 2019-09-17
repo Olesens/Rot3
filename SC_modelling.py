@@ -71,7 +71,7 @@ def trial_df(df, animal_id, date, ses_no=1, normalise=False):
                 key = str(session + str(trial_index))
                 sen_mean = (mean(sensory_list)/6)
                 if normalise is True:
-                    ct_st = (trial[1]/6)
+                    ct_st = (trial[1]/6)  # should definitely 
                     pt_st = (prev_trial[1]/6)
                     ppt_st = (pprev_trial[1]/6)
                     trial_dict[key] = [trial[3], ct_st, prev_trial[2], pt_st, prev_trial[4], prev_trial[3],
