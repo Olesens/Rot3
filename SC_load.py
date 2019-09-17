@@ -260,36 +260,3 @@ def create_sc_df(datafolder=r'H:\ratter\SoloData\Data', save=True, name='SC_full
 
 
 
-
-
-def mini_hist():
-    hits = (AA01['history_hits'])[0]
-    tm = (AA01['history_tm'])[0]
-    stim = (AA01['history_stim'])[0]
-    side = (AA01['history_side'])[0]
-    vio = (AA01['history_vio'])[0]
-    vio = pd.DataFrame(vio, columns=['vio'])
-    vio = vio.T
-    tm = (AA01['history_tm'])[0]
-    tm = pd.DataFrame(tm, columns=['tm'])
-    tm = tm.T
-    stim = (AA01['history_stim'])[0]
-    stim = pd.DataFrame(stim, columns=['stim'])
-    stim = pd.DataFrame(stim, columns=['stim'])
-    stim = stim.T
-    side = (AA01['history_side'])[0]
-    side = pd.DataFrame(side, columns=['side'])
-    side = side.T
-    hits = (AA01['history_hits'])[0]
-    hits = pd.DataFrame(hits, columns=['hits'])
-    hits = hits.T
-    list = [vio, tm, stim, side, hits]
-    history = pd.concat(list)
-
-    history['righty'] = (history['side'] == 114) & (history['hits'] == 1)
-    history['righty'].sum()
-
-
-    return history
-
-
