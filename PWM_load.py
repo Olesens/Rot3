@@ -1,10 +1,44 @@
 import scipy.io as sio
-from pandas import Series, DataFrame
 import pandas as pd
-import numpy as np
 import os
 import pickle
+from pandas import Series, DataFrame
 
+import numpy as np
+
+
+# dictionary mapping param names to their headers
+# this might not be useful actually, it is currently not being used mainly for own ease
+params_to_headers = {'ProtocolsSection_n_done_trials': 'done_trials',
+                     'SavingSection_settings_file': 'settings_file',
+                     'SavingSection_settings_file_load_time': 'start_time',
+                     'SavingSection_experimenter': 'experimenter',
+                     'SavingSection_ratname': 'animal_id',
+                     'SavingSection_SaveTime': 'save_time',
+                     'SideSection_A2_time': 'A2_time',
+                     'SideSection_init_CP_duration': 'init_CP',
+                     'SideSection_Total_CP_duration': 'total_CP',
+                     'SideSection_reward_type': 'reward_type',
+                     'SideSection_training_stage': 'stage',
+                     'StimulusSection_nTrialsClass1': 'right_trials',
+                     'StimulusSection_nTrialsClass2': 'right_trials',
+                     'StimulusSection_nTrialsClass3': 'right_trials',
+                     'StimulusSection_nTrialsClass4': 'right_trials',
+                     'StimulusSection_nTrialsClass5': 'left_trials',
+                     'StimulusSection_nTrialsClass6': 'left_trials',
+                     'StimulusSection_nTrialsClass7': 'left_trials',
+                     'StimulusSection_nTrialsClass8': 'left_trials',
+                     'OverallPerformanceSection_violation_rate': 'violations',
+                     'OverallPerformanceSection_timeout_rate': 'timeouts',
+                     'OverallPerformanceSection_Left_hit_frac': 'hits_left',
+                     'OverallPerformanceSection_Right_hit_frac': 'hits_right',
+                     'OverallPerformanceSection_hit_frac': 'hits_total',
+                     'AthenaDelayComp_violation_history': 'history_vio',
+                     'AthenaDelayComp_hit_history': 'history_hits',
+                     'AthenaDelayComp_pair_history': 'history_pair',
+                     'AthenaDelayComp_timeout_history': 'history_tm',
+                     'SideSection_previous_sides': 'history_side'
+                     }
 
 
 ### INCLUDE IN PARAM_LIST FEATURES TO BE EXTRACTED FROM MATLAB FILE  ###
@@ -40,65 +74,8 @@ param_list = ['ProtocolsSection_n_done_trials',
               'SideSection.previous.sides'
               ]
 
-# shorter param names, same as Viktor
-params_as_headers = ['file',
-                     'settings_file',
-                     'experimenter',
-                     'animal_id',
-                     'date',
-                     'start_time',
-                     'save_time',
-                     'right_trials',
-                     'left_trials',
-                     'stage',
-                     'init_CP',
-                     'total_CP',
-                     'done_trials',
-                     'A2_time',
-                     'reward_type',
-                     'violations',
-                     'timeouts',
-                     'hits_left',
-                     'hits_right',
-                     'hits_total',
-                     'history_vio',
-                     'history_hits',
-                     'history_pair',
-                     'history_tm',
-                     'history_side']  # not actually side history but info about which side would be correct
 
-# dictionary mapping param names to their headers
-# this might not be useful actually, it is currently not being used mainly for own ease
-params_to_headers = {'ProtocolsSection_n_done_trials': 'done_trials',
-                     'SavingSection_settings_file': 'settings_file',
-                     'SavingSection_settings_file_load_time': 'start_time',
-                     'SavingSection_experimenter': 'experimenter',
-                     'SavingSection_ratname': 'animal_id',
-                     'SavingSection_SaveTime': 'save_time',
-                     'SideSection_A2_time': 'A2_time',
-                     'SideSection_init_CP_duration': 'init_CP',
-                     'SideSection_Total_CP_duration': 'total_CP',
-                     'SideSection_reward_type': 'reward_type',
-                     'SideSection_training_stage': 'stage',
-                     'StimulusSection_nTrialsClass1': 'right_trials',
-                     'StimulusSection_nTrialsClass2': 'right_trials',
-                     'StimulusSection_nTrialsClass3': 'right_trials',
-                     'StimulusSection_nTrialsClass4': 'right_trials',
-                     'StimulusSection_nTrialsClass5': 'left_trials',
-                     'StimulusSection_nTrialsClass6': 'left_trials',
-                     'StimulusSection_nTrialsClass7': 'left_trials',
-                     'StimulusSection_nTrialsClass8': 'left_trials',
-                     'OverallPerformanceSection_violation_rate': 'violations',
-                     'OverallPerformanceSection_timeout_rate': 'timeouts',
-                     'OverallPerformanceSection_Left_hit_frac': 'hits_left',
-                     'OverallPerformanceSection_Right_hit_frac': 'hits_right',
-                     'OverallPerformanceSection_hit_frac': 'hits_total',
-                     'AthenaDelayComp_violation_history': 'history_vio',
-                     'AthenaDelayComp_hit_history': 'history_hits',
-                     'AthenaDelayComp_pair_history': 'history_pair',
-                     'AthenaDelayComp_timeout_history': 'history_tm',
-                     'SideSection_previous_sides': 'history_side'
-                     }
+
 
 # create new list with parameters, replace . with _ to correctly extract from matlab file
 param_list_refined = []
@@ -249,18 +226,46 @@ def create_all_dfs(data_folder):
     return rat_df_list
 
 
+# GENERATE AND SAVE THE FULL DATAFRAME #
+def save_df(dataframe, name='PWM_full_df', folder="Rot3_data\\"):
+    """
+    Save dataframe under specified name in folder using pickle
 
-def save_dataframe(dataframe, name = 'PWM_full_df'):
-    # Save large dataframe in project
-    with open("Rot3_data\\" + name + ".pkl", "wb") as f:
+    Current default parameters is a folder within the python project.
+    NB: function overwrites, without warning, any files given by the same name
+    :param dataframe: Dataframe
+    :param name: Name to save Dataframe under
+    :type name: str
+    :param folder: the folder to save the dataframe in
+    :type folder: str
+
+    :return: None
+    """
+    with open(folder + name + ".pkl", "wb") as f:
         pickle.dump(dataframe, f)
+    print('Dataframe has been saved in folder: ' + folder + ' as: ' + name)
 
-#data_folder = r'H:\ratter\SoloData\Data'
-#rat_df_list = create_all_dfs(data_folder)
-#Rat_full = pd.concat(rat_df_list)
-#save_dataframe(Rat_full, name='PWM_full_df')
 
-#create_rat_dict('data_@AthenaDelayComp_athena_AA02_190807a.mat', r'H:\ratter\SoloData\Data\athena\AA02' )
+def create_pwm_df(datafolder=r'H:\ratter\SoloData\Data', save=True, name='PWM_full_df', folder="Rot3_data\\" ):
+    """
+    Function creates a complete dataframe for all animals in datafolder which has a pwm setting file.
+
+    :param datafolder: Location of ratter SoloData folder
+    :param save: Whether or not to save the newly created dataframe
+    :type save: bool
+    :param name: if save = True, what name to save the dataframe under
+    :param folder: of save = True, what folder should the dataframe be pickle dumped in.
+
+    :return: Complete PWM dataframe
+    """
+    pwm_df_list = create_all_dfs(data_folder)  # creates all dfs for all relevant files in given datafolder
+    pwm_full_df = pd.concat(pwm_df_list)  # concatenates all dfs into one dataframe
+    if save is True:
+        save_df(pwm_full_df, name=name, folder=folder)
+    return pwm_full_df
+
+
+
 
 
 
