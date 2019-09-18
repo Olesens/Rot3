@@ -27,10 +27,19 @@ scaler = preprocessing.MinMaxScaler()  # define name for scaler used in cv_model
 
 # Generate dataframe of all relevant raw trials, exclude vio and tm trials
 def trial_df(df, animal_id, date, ses_no=1):
+    """
+    From provided dataframe, animal_id and date extracts all non violation or timeout trials and generates
+    new dataframe
+    :param df: dateframe containing history of hits, side etc. for given animal and date
+    :param animal_id: string, example 'AA08'
+    :param date: string, pandas date format. Example: '2019-08-20'
+    :param ses_no: session number is used to keep track of which trials are from which session, this is the number
+                    that the function will put in the index for the given date.
+    :return: dataframe with all relevant trials in.
+    """
+
     history = cal_prob(df, animal_id, date, ret_hist=True)
-
-
-    trial_index = 2  # we start from the second trial because the first trial dosen't have a previous trial
+    trial_index = 2  # we start from the second trial because the first trial doesn't have a previous trial
     trial_dict = {}
 
     # determine if animal went right or left
@@ -44,10 +53,10 @@ def trial_df(df, animal_id, date, ses_no=1):
     mask = (history['side'] == 114)  # right side is correct choice
     history['right_side_correct'] = history['right_side_correct'].mask(mask, 1)
 
-    #return history
-    sensory_list = []  # I suppose I will stil inlude sensory stim from non-hit trials in the mean.
+    # return history
+    sensory_list = []  # I suppose I will still include sensory stim from non-hit trials in the mean.
     # trial[0] is side, trial[1] is stim, trial[2] is hit, trial[3] is went_right, trial[4] is correct side 1=right
-    for tri_number in history.index._values[2:]: # if it was not a tm or vio add it to dataset
+    for tri_number in history.index._values[2:]:  # if it was not a tm or vio add it to dataset
 
         pprev_trial = history.ix[(tri_number - 2)]
         prev_trial = history.ix[(tri_number - 1)]
@@ -59,17 +68,12 @@ def trial_df(df, animal_id, date, ses_no=1):
         trial = history.ix[tri_number]
         session = 'S' + str(ses_no) + '_'
         if np.isnan(trial[2]) == False:
-            #tri_index_list.append(trial_index)
             if np.isnan(prev_trial[2]) == False:
                 key = str(session + str(trial_index))
                 sen_mean = (mean(sensory_list))
                 trial_dict[key] = [trial[3], trial[1], prev_trial[2], prev_trial[1], prev_trial[4], prev_trial[3],
                                        pprev_trial[1], sen_mean]
         trial_index += 1
-
-    #probably have to figure out how to deal with if the previous trial was a violation or timeout
-        # make the nan values
-        # have removed them for now
 
     # create dict
     data_df = pd.DataFrame.from_dict(trial_dict,
@@ -249,7 +253,7 @@ def cv_models_logit(df, plot=False, avoid_nan=False, normalise=False):  # have n
         x = df[model_dict[model]]
         if normalise is True:
             x_scaled = scaler.fit_transform(x)
-            x_df = pd.DataFrame(x_scaled, columns=x.columns, index=x.index)  # take the transformed array and make back into a df
+            x_df = pd.DataFrame(x_scaled, columns=x.columns, index=x.index)  # turn array back into df
             x_df = x_df.drop(columns=['intercept'])  # remove old intercept it gets transformed to 0
             x_df['intercept'] = 1
             x = x_df
@@ -259,28 +263,16 @@ def cv_models_logit(df, plot=False, avoid_nan=False, normalise=False):  # have n
 
         # do I need to divide into train and test data sets?
 
-        # estimate intercept
-        #logit_model = sm.Logit(y, x)
-        #result = logit_model.fit_regularized(alpha=1, L1_wt=0.0)
-        #print(result.summary2())
-        #intercept_value = result.params[(len(x.columns)-1)]  # access the last column
-        #if model == 'A: No history':
-        #    intercept_value = intercept_value + 0.0015  #have to add this otherwise coef will be perfectly 1 and then
-        #    # the logit function read it as nan
-        #print('intercept is: ' + str(intercept_value))
-        #x = x.drop(columns=['intercept'])  # drop the old intercept column
-        #x['Intercept'] = intercept_value
-
         # test model
         logit_model = sm.Logit(y, x)
         result = logit_model.fit_regularized(alpha=1, L1_wt=0.0)
         print(result.summary2())
         #print(result.prsquared)
-        p = np.isnan(result.pvalues[0])
+        p = np.isnan(result.pvalues[0])  # check if weight for Ct_stim is Nan
         if avoid_nan is True:
             index = 0
             while p == True:  # if there are nan values in the results consider re-running, this is a short term fix.
-                # kind of want to make so it only effect Ct_stim, the result dosen't get negative for the others.
+                # kind of want to make so it only effect Ct_stim, the result doesn't get negative for the others.
                 print('detected null value, adding to intercept')
                 x['intercept'] = x['intercept'] + 0.02
                 logit_model = sm.Logit(y, x)

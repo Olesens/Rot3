@@ -23,10 +23,11 @@ warnings.filterwarnings('ignore')
 pickle_in = open("Rot3_data\\PWM_full_df.pkl","rb")
 Animal_df = pickle.load(pickle_in)
 animal_list = []  # optional selection of animals to include in dataframe.
-
 pwm = clean_up_df(Animal_df, animallist=animal_list)
 pwm = pwm.rename(columns={"history_pair": "history_stim"})  # temporary fix to run some functions
 date_list = pwm.index.values
+
+
 date_list2 = ['2019-07-24',
        '2019-07-25', '2019-07-26', '2019-07-29', '2019-07-30',
        '2019-07-31', '2019-08-01', '2019-08-02', '2019-08-05',
@@ -55,9 +56,9 @@ date_list4 = ['2019-07-24', '2019-07-25',
        '2019-09-13', '2019-09-16']
 
 
-aa08 = all_trials(pwm, 'AA08', date_list4, stim_no=8, normalise=False)
-plot_all_logs(aa08, normalise=True)
-plt.title(' PsuedoR2 for AA08')
+aa08 = all_trials(pwm, 'AA08', date_list4)
+#plot_all_logs(aa08, normalise=True)
+#plt.title(' PsuedoR2 for AA08')
 
 #aa02 = all_trials(pwm, 'AA02', date_list4)
 #plot_all_logs(aa02)
