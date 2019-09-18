@@ -55,22 +55,22 @@ date_list4 = ['2019-07-24', '2019-07-25',
        '2019-09-13', '2019-09-16']
 
 
-aa08 = all_trials(pwm, 'AA08', date_list4)
-plot_all_logs(aa08)
+aa08 = all_trials(pwm, 'AA08', date_list4, stim_no=8, normalise=False)
+plot_all_logs(aa08, normalise=True)
 plt.title(' PsuedoR2 for AA08')
 
-aa02 = all_trials(pwm, 'AA02', date_list4)
-plot_all_logs(aa02)
-plt.title(' PsuedoR2 for AA02')
+#aa02 = all_trials(pwm, 'AA02', date_list4)
+#plot_all_logs(aa02)
+#plt.title(' PsuedoR2 for AA02')
 
-do05 = all_trials(pwm, 'DO05', date_list4)
-plot_all_logs(do05)
-plt.title(' PsuedoR2 for DO05')
+#do05 = all_trials(pwm, 'DO05', date_list4)
+#plot_all_logs(do05)
+#plt.title(' PsuedoR2 for DO05')
 
-sc01 = all_trials(pwm, 'SC01', date_list4)
-plot_all_logs(sc01)
-plt.title(' PsuedoR2 for SC01')
+#sc01 = all_trials(pwm, 'SC01', date_list4)
+#plot_all_logs(sc01)
+#plt.title(' PsuedoR2 for SC01')
 
-vp06 = all_trials(pwm, 'VP06', date_list4)
-plot_all_logs(vp06)
-plt.title(' PsuedoR2 for VP06')
+#vp06 = all_trials(pwm, 'VP06', date_list4)
+#plot_all_logs(vp06)
+#plt.title(' PsuedoR2 for VP06')

@@ -13,6 +13,7 @@ from sklearn.linear_model import LogisticRegressionCV
 from sklearn.feature_selection import RFE
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import roc_curve
+from sklearn import preprocessing
 
 from sklearn import metrics
 import warnings
@@ -21,19 +22,11 @@ warnings.filterwarnings('ignore')
 
 pickle_in = open("Rot3_data\\SC_full_df.pkl","rb")
 Animal_df = pickle.load(pickle_in)
-# Notes ....
-# df['Ct_wr'].value_counts()
-# session_df['Ct_wr'].value_counts()
-# sns.countplot(x='Ct_wr', data=session_df, palette='hls')
-# df.isnull().sum()
-# df = df.drop(columns=['Pt_Stim'])
-# df = trial_df(sc, animal_id, date)
+scaler = preprocessing.MinMaxScaler()  # define name for scaler used in cv_model functions
 
 
-# create trial data set
-
-# Generate dataframe of all relevant raw trials
-def trial_df(df, animal_id, date, ses_no=1, normalise=False):
+# Generate dataframe of all relevant raw trials, exclude vio and tm trials
+def trial_df(df, animal_id, date, ses_no=1):
     history = cal_prob(df, animal_id, date, ret_hist=True)
 
 
@@ -69,15 +62,8 @@ def trial_df(df, animal_id, date, ses_no=1, normalise=False):
             #tri_index_list.append(trial_index)
             if np.isnan(prev_trial[2]) == False:
                 key = str(session + str(trial_index))
-                sen_mean = (mean(sensory_list)/6)
-                if normalise is True:
-                    ct_st = (trial[1]/6)  # should definitely 
-                    pt_st = (prev_trial[1]/6)
-                    ppt_st = (pprev_trial[1]/6)
-                    trial_dict[key] = [trial[3], ct_st, prev_trial[2], pt_st, prev_trial[4], prev_trial[3],
-                                       ppt_st, sen_mean]
-                else:
-                    trial_dict[key] = [trial[3], trial[1], prev_trial[2], prev_trial[1], prev_trial[4], prev_trial[3],
+                sen_mean = (mean(sensory_list))
+                trial_dict[key] = [trial[3], trial[1], prev_trial[2], prev_trial[1], prev_trial[4], prev_trial[3],
                                        pprev_trial[1], sen_mean]
         trial_index += 1
 
@@ -94,13 +80,13 @@ def trial_df(df, animal_id, date, ses_no=1, normalise=False):
     return data_df
 
 
-def all_trials(df, animal_id, date_list, dummies=False, normalise=False):
+def all_trials(df, animal_id, date_list, dummies=False, normalise=False, stim_no=6):
     session_list = []
     session_index = 1
     for session in date_list:
         print('date is: ' +  str(session))
         try:
-            trials = trial_df(df, animal_id, session, ses_no = session_index, normalise=normalise)
+            trials = trial_df(df, animal_id, session, ses_no = session_index)
             session_list.append(trials)
             session_index += 1
             print('success')
@@ -121,9 +107,6 @@ def all_trials(df, animal_id, date_list, dummies=False, normalise=False):
         to_keep = [i for i in session_df_vars if i not in cat_vars]
         session_df_final=session_df[to_keep]
         session_df = session_df_final
-
-
-
     return session_df
 
 
@@ -236,7 +219,7 @@ def check_all_models(df):
 
 
 # Different logistic functions, could concatenate into one function
-def cv_models_logit(df, plot=False, avoid_nan=False):  # have not figured out in this to deal with potential dummy variables
+def cv_models_logit(df, plot=False, avoid_nan=False, normalise=False):  # have not figured out in this to deal with potential dummy variables
     # should I add a way chose which model to run
     # and add animal id?
     df['intercept'] = 1  # think I need this when I only have Ct_stim to estimate intercept
@@ -264,6 +247,13 @@ def cv_models_logit(df, plot=False, avoid_nan=False):  # have not figured out in
 
     for model in model_dict:
         x = df[model_dict[model]]
+        if normalise is True:
+            x_scaled = scaler.fit_transform(x)
+            x_df = pd.DataFrame(x_scaled, columns=x.columns, index=x.index)  # take the transformed array and make back into a df
+            x_df = x_df.drop(columns=['intercept'])  # remove old intercept it gets transformed to 0
+            x_df['intercept'] = 1
+            x = x_df
+
         print('Model is: ' + str(model))
         print(model)
 
@@ -312,7 +302,7 @@ def cv_models_logit(df, plot=False, avoid_nan=False):  # have not figured out in
     return pr2_dict
 
 
-def cv_models_logreg(df, plot=False):  # have not figured out in this to deal with potential dummy variables
+def cv_models_logreg(df, plot=False, normalise=False):  # have not figured out in this to deal with potential dummy variables
     #df['intercept'] = 1  # think I need this when I only have Ct_stim to estimate intercept
     y = df['Ct_wr']
     pr2_dict = {}
@@ -338,6 +328,7 @@ def cv_models_logreg(df, plot=False):  # have not figured out in this to deal wi
 
     for model in model_dict:
         x = df[model_dict[model]]
+
         #print('Model is: ' %model_dict[model])
 
         # do I need to divide into train and test data sets?
@@ -348,10 +339,13 @@ def cv_models_logreg(df, plot=False):  # have not figured out in this to deal wi
         #print(result.summary2())
         #intercept_value = result.params[(len(x.columns)-1)]  # access the last column
         #print('intercept is: ' %intercept_value)
-        x = x.drop(columns=['intercept'])  # drop the old intercept column
+        x = x.drop(columns=['intercept'])  # drop the old intercept column, actually wht does it not complain?
         #x['Intercept'] = intercept_value
 
         # test model
+        if normalise is True:
+            x = scaler.fit_transform(x)
+            # don't need to do other stuff from cv_logit to this because this automatically fits and intercept.
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.20, random_state=0)
         clf = LogisticRegressionCV(cv=5, random_state=0, fit_intercept=True)
         clf.fit(x_train, y_train)  # look up what these values really mean
@@ -369,7 +363,7 @@ def cv_models_logreg(df, plot=False):  # have not figured out in this to deal wi
     return pr2_dict
 
 
-def cv_models_log(df, plot=False):  # have not figured out in this to deal with potential dummy variables
+def cv_models_log(df, plot=False, normalise=False):  # have not figured out in this to deal with potential dummy variables
     #df['intercept'] = 1  # think I need this when I only have Ct_stim to estimate intercept
     y = df['Ct_wr']
     pr2_dict = {}
@@ -395,6 +389,7 @@ def cv_models_log(df, plot=False):  # have not figured out in this to deal with 
 
     for model in model_dict:
         x = df[model_dict[model]]
+
         #print('Model is: ' %model_dict[model])
 
         # do I need to divide into train and test data sets?
@@ -409,6 +404,8 @@ def cv_models_log(df, plot=False):  # have not figured out in this to deal with 
         #x['Intercept'] = intercept_value
 
         # test model
+        if normalise is True:
+            x = scaler.fit_transform(x)
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.20, random_state=0)
         clf = LogisticRegression(random_state=0, fit_intercept=True)
         clf.fit(x_train, y_train)  # look up what these values really mean
@@ -426,10 +423,10 @@ def cv_models_log(df, plot=False):  # have not figured out in this to deal with 
     return pr2_dict
 
 
-def plot_all_logs(df, animal_id=None, avoid_nan=False):
-    dict1 = cv_models_logit(df, plot=False, avoid_nan=avoid_nan)
-    dict2 = cv_models_logreg(df)
-    dict3 = cv_models_log(df)
+def plot_all_logs(df, animal_id=None, avoid_nan=False, normalise=False):
+    dict1 = cv_models_logit(df, plot=False, avoid_nan=avoid_nan, normalise=normalise)
+    dict2 = cv_models_logreg(df, normalise=normalise)
+    dict3 = cv_models_log(df, normalise=normalise)
     dicts = pd.DataFrame.from_dict([dict1, dict2, dict3])
     dicts.set_index([pd.Index(['Logit','LogregCV', 'Logreg' ])])
     dicts.plot.bar()
@@ -466,9 +463,9 @@ animal_id = 'VP01'
 date2 = '2019-08-23'
 date = '2019-08-06'
 # create and example df
-session_df = all_trials(sc, animal_id, date_list, dummies=False)
-df = session_df
-y = df['Ct_wr']
+#session_df = all_trials(sc, animal_id, date_list, dummies=False)
+#df = session_df
+#y = df['Ct_wr']
 #x = df[['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr', 'Pt_wr', 'PPt_stim', 'Lt_stim']]
 #x1 = ['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr', 'Pt_wr', 'PPt_stim',
  #      'Lt_stim', 'Ct_Stim_1.0', 'Ct_Stim_2.0', 'Ct_Stim_3.0', 'Ct_Stim_4.0',
