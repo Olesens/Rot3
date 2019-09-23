@@ -84,7 +84,7 @@ def trial_df(df, animal_id, date, ses_no=1):
     return data_df
 
 
-def all_trials(df, animal_id, date_list, dummies=False, normalise=False, stim_no=6):
+def all_trials(df, animal_id, date_list, dummies=False):
     session_list = []
     session_index = 1
     for session in date_list:
@@ -100,8 +100,8 @@ def all_trials(df, animal_id, date_list, dummies=False, normalise=False, stim_no
 
     if dummies is True:
         column_names = ['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr', 'Pt_wr', 'PPt_stim', 'Lt_stim']
-        #cat_vars = ['Ct_Stim', 'Pt_Stim', 'PPt_stim']  # create dummy variables for all the stimuli
-        cat_vars = ['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr', 'Pt_wr', 'PPt_stim']  # dummies for everything
+        cat_vars = ['Ct_Stim', 'Pt_Stim', 'PPt_stim']  # create dummy variables for all the stimuli
+        #cat_vars = ['Ct_Stim', 'Pt_Hit', 'Pt_Stim', 'Pt_csr', 'Pt_wr', 'PPt_stim']  # dummies for everything
         for var in cat_vars:
             cat_list = 'var' + '_' + var
             cat_list = pd.get_dummies(session_df[var], prefix=var)
@@ -223,7 +223,7 @@ def check_all_models(df):
 
 
 # Different logistic functions, could concatenate into one function
-def cv_models_logit(df, plot=False, avoid_nan=False, normalise=False):  # have not figured out in this to deal with potential dummy variables
+def cv_models_logit(df, plot=False, avoid_nan=False, normalise=True, dummies=False, solver=''):  # have not figured out in this to deal with potential dummy variables
     # should I add a way chose which model to run
     # and add animal id?
     df['intercept'] = 1  # think I need this when I only have Ct_stim to estimate intercept
@@ -249,13 +249,35 @@ def cv_models_logit(df, plot=False, avoid_nan=False, normalise=False):  # have n
                       ['Ct_Stim', 'Pt_csr', 'Lt_stim', 'intercept']
                   }
 
+
+    dummy_list = ['Ct_Stim', 'Pt_Stim', 'PPt_stim']
+
     for model in model_dict:
-        x = df[model_dict[model]]
+        if dummies is True:
+            x_dummy_list = []
+            x_list = model_dict[model].copy()
+            #print(str(x_list))
+            for column_name in model_dict[model]:
+                #print(str(column_name))
+                if column_name in dummy_list:
+                    x_list.remove(column_name)
+                    print('Removed, now' + str(x_list))
+            x_without_dummies = df[x_list]
+            x_dummy_list.append(x_without_dummies)
+            for dummy in dummy_list:
+                if dummy in model_dict[model]:
+                    x_dummy = df.filter(regex='^'+dummy, axis=1)
+                    x_dummy_list.append(x_dummy)
+            x = pd.concat((x_dummy_list), axis=1)
+
+        else:
+            x = df[model_dict[model]]
+
         if normalise is True:
             x_scaled = scaler.fit_transform(x)
             x_df = pd.DataFrame(x_scaled, columns=x.columns, index=x.index)  # turn array back into df
             x_df = x_df.drop(columns=['intercept'])  # remove old intercept it gets transformed to 0
-            x_df['intercept'] = 1
+            x_df['intercept'] = 1  # add the intercept again
             x = x_df
 
         print('Model is: ' + str(model))
@@ -265,7 +287,10 @@ def cv_models_logit(df, plot=False, avoid_nan=False, normalise=False):  # have n
 
         # test model
         logit_model = sm.Logit(y, x)
-        result = logit_model.fit_regularized(alpha=1, L1_wt=0.0)
+        if solver is not None:
+            result = logit_model.fit(method=solver)
+        else:
+            result = logit_model.fit_regularized(alpha=1, L1_wt=0.0)
         print(result.summary2())
         #print(result.prsquared)
         p = np.isnan(result.pvalues[0])  # check if weight for Ct_stim is Nan
@@ -294,7 +319,7 @@ def cv_models_logit(df, plot=False, avoid_nan=False, normalise=False):  # have n
     return pr2_dict
 
 
-def cv_models_logreg(df, plot=False, normalise=False):  # have not figured out in this to deal with potential dummy variables
+def cv_models_logreg(df, plot=False, normalise=True, dummies=False):  # have not figured out in this to deal with potential dummy variables
     #df['intercept'] = 1  # think I need this when I only have Ct_stim to estimate intercept
     y = df['Ct_wr']
     pr2_dict = {}
@@ -317,9 +342,28 @@ def cv_models_logreg(df, plot=False, normalise=False):  # have not figured out i
                   'I: Correct-side + long term sens. history':
                       ['Ct_Stim', 'Pt_csr', 'Lt_stim', 'intercept']
                   }
+    dummy_list = ['Ct_Stim', 'Pt_Stim', 'PPt_stim']
 
     for model in model_dict:
-        x = df[model_dict[model]]
+        if dummies is True:
+            x_dummy_list = []
+            x_list = model_dict[model].copy()
+            #print(str(x_list))
+            for column_name in model_dict[model]:
+                #print(str(column_name))
+                if column_name in dummy_list:
+                    x_list.remove(column_name)
+                    print('Removed, now' + str(x_list))
+            x_without_dummies = df[x_list]
+            x_dummy_list.append(x_without_dummies)
+            for dummy in dummy_list:
+                if dummy in model_dict[model]:
+                    x_dummy = df.filter(regex='^'+dummy, axis=1)
+                    x_dummy_list.append(x_dummy)
+            x = pd.concat((x_dummy_list), axis=1)
+
+        else:
+            x = df[model_dict[model]]
 
         #print('Model is: ' %model_dict[model])
 
@@ -355,7 +399,7 @@ def cv_models_logreg(df, plot=False, normalise=False):  # have not figured out i
     return pr2_dict
 
 
-def cv_models_log(df, plot=False, normalise=False):  # have not figured out in this to deal with potential dummy variables
+def cv_models_log(df, plot=False, normalise=True, dummies=False):  # have not figured out in this to deal with potential dummy variables
     #df['intercept'] = 1  # think I need this when I only have Ct_stim to estimate intercept
     y = df['Ct_wr']
     pr2_dict = {}
@@ -378,9 +422,27 @@ def cv_models_log(df, plot=False, normalise=False):  # have not figured out in t
                   'I: Correct-side + long term sens. history':
                       ['Ct_Stim', 'Pt_csr', 'Lt_stim', 'intercept']
                   }
-
+    dummy_list = ['Ct_Stim', 'Pt_Stim', 'PPt_stim']
     for model in model_dict:
-        x = df[model_dict[model]]
+        if dummies is True:
+            x_dummy_list = []
+            x_list = model_dict[model].copy()
+            #print(str(x_list))
+            for column_name in model_dict[model]:
+                #print(str(column_name))
+                if column_name in dummy_list:
+                    x_list.remove(column_name)
+                    print('Removed, now' + str(x_list))
+            x_without_dummies = df[x_list]
+            x_dummy_list.append(x_without_dummies)
+            for dummy in dummy_list:
+                if dummy in model_dict[model]:
+                    x_dummy = df.filter(regex='^'+dummy, axis=1)
+                    x_dummy_list.append(x_dummy)
+            x = pd.concat((x_dummy_list), axis=1)
+
+        else:
+            x = df[model_dict[model]]
 
         #print('Model is: ' %model_dict[model])
 
@@ -415,10 +477,10 @@ def cv_models_log(df, plot=False, normalise=False):  # have not figured out in t
     return pr2_dict
 
 
-def plot_all_logs(df, animal_id=None, avoid_nan=False, normalise=False):
-    dict1 = cv_models_logit(df, plot=False, avoid_nan=avoid_nan, normalise=normalise)
-    dict2 = cv_models_logreg(df, normalise=normalise)
-    dict3 = cv_models_log(df, normalise=normalise)
+def plot_all_logs(df, animal_id=None, avoid_nan=False, normalise=True, dummies=False):
+    dict1 = cv_models_logit(df, plot=False, avoid_nan=avoid_nan, normalise=normalise, dummies=dummies)
+    dict2 = cv_models_logreg(df, normalise=normalise, dummies=dummies)
+    dict3 = cv_models_log(df, normalise=normalise, dummies=dummies)
     dicts = pd.DataFrame.from_dict([dict1, dict2, dict3])
     dicts.set_index([pd.Index(['Logit','LogregCV', 'Logreg' ])])
     dicts.plot.bar()
@@ -431,13 +493,14 @@ def plot_all_logs(df, animal_id=None, avoid_nan=False, normalise=False):
     plt.ylabel('PseudoR2', fontsize=14)
     return dicts
 
+
 def run_all_logplots():
     for animal in animals:
         try:
             df = all_trials(sc, animal, date_list, dummies=False)
             #id = str(animal)
-            fig_name = 'sc_' + animal + '_R2'
-            plot = plot_all_logs(df, animal_id=animal)
+            fig_name = 'sc_' + animal + '_R2_nanT_normT_stNR'
+            plot = plot_all_logs(df, animal_id=animal, avoid_nan=True)
             plt.savefig('Rot3_data\\SoundCat\\LogReg\\' + fig_name + '.png')
             plt.close()
         except:

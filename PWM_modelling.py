@@ -56,7 +56,7 @@ date_list4 = ['2019-07-24', '2019-07-25',
        '2019-09-13', '2019-09-16']
 
 
-aa08 = all_trials(pwm, 'AA08', date_list4)
+
 #plot_all_logs(aa08, normalise=True)
 #plt.title(' PsuedoR2 for AA08')
 
@@ -75,3 +75,28 @@ aa08 = all_trials(pwm, 'AA08', date_list4)
 #vp06 = all_trials(pwm, 'VP06', date_list4)
 #plot_all_logs(vp06)
 #plt.title(' PsuedoR2 for VP06')
+
+animals_NR = ['AA02', 'AA06', 'AA08', 'DO05', 'DO06',
+           'SC01', 'SC02', 'SC03', 'SC06', 'VP06']
+
+def run_all_logplots(animals):
+    for animal in animals:
+        try:
+            df = all_trials(pwm, animal, date_list4, dummies=False)
+            #id = str(animal)
+            fig_name = 'pwm_' + animal + '_R2_nanT_normT_stNR'
+            plot = plot_all_logs(df, animal_id=animal, avoid_nan=True)
+            plt.savefig('Rot3_data\\PWM\\LogReg\\' + fig_name + '.png')
+            plt.close()
+        except:
+            print('could not extract data and test models for animal: '+ str(animal))
+
+
+
+
+# see effect of including dummies
+aa08 = all_trials(pwm, 'AA08', date_list4, dummies=False)
+aa08_dum = all_trials(pwm, 'AA08', date_list4, dummies=True)
+
+plot_all_logs(aa08, animal_id='AA08, no dummies', avoid_nan=True, dummies=False)
+plot_all_logs(aa08_dum, animal_id='AA08, dummies', avoid_nan=True, dummies=True)

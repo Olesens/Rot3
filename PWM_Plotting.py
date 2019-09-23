@@ -14,6 +14,7 @@ pickle_in = open("Rot3_data\\PWM_full_df.pkl","rb")
 Animal_df = pickle.load(pickle_in)
 
 
+# CLEAN UP AND CREATE NEW DF FROM RAW
 def clean_up_df(df, animallist=[], index=True, multiindex=True, fixstages=True, duplicates=True):
     """
 
@@ -51,8 +52,9 @@ def clean_up_df(df, animallist=[], index=True, multiindex=True, fixstages=True, 
 
         #could include a show removed duplicates function
     return df
+pwm = pwm.rename(columns={"history_pair": "history_stim"})
 
-
+# PLOTTING CP, TRIALS, AND WITHIN SESSION TRIAL TYPES
 def plot_cp(df, stage='All'):
     if stage != 'All':
         mask = df['stage'] == stage
@@ -69,7 +71,7 @@ def plot_cp(df, stage='All'):
     else:
         print('all stages included')
         df_cp = df['total_CP']
-        cp_plot = df_cp.plot(marker='o',  # I might be able to set some of these parameters globally and not need function
+        cp_plot = df_cp.plot(marker='o',
                              linewidth=1.0,
                              markersize=2.5,
                              cmap=plt.cm.RdPu)
@@ -130,12 +132,13 @@ def plot_trials(df, stage='All', p_type='all_trials'):
     plt.xticks(rotation=75)
     plt.legend(col_list)
     plt.xlabel('Date')
-    plt.title(stage, p_types_title[p_type])
+    plt.title('Stage: ' + str(stage) + str(p_types_title[p_type]))
 
     # how to change line colors by making a loop
     return tri_plot
 
-def boxplot_animal(df, animal_id, stage='All', percentage = False):
+
+def boxplot_animal(df, animal_id, stage='All'):
     # maybe only for stage 2 and 3 really?
     # select for the single animal, thus animal = level, axis=1 because it is on the column level
     # not on the index level, .xs allows selection at specific often lower level
@@ -180,74 +183,74 @@ pwm = clean_up_df(Animal_df, animallist=animals)
 def run_all_plots():
     # plot CP duration for all animals
     CP_fig = plot_cp(pwm)
-    plt.savefig('Rot3_data\\CP_fig.png', bbox_inches='tight')
+    plt.savefig('Rot3_data\\PWM\\CP_fig.png', bbox_inches='tight')
     plt.close()
 
     # plot CP duration for stage 1
     st1_CP = plot_cp(pwm, stage=1)
-    plt.savefig('Rot3_data\\st1_CP.png', bbox_inches='tight')
+    plt.savefig('Rot3_data\\PWM\\st1_CP.png', bbox_inches='tight')
     plt.close()
 
     # Done trials for stage 0
     st0_trials = plot_trials(pwm, stage=0, p_type='all_trials')
-    plt.savefig('Rot3_data\\st0_trials.png', bbox_inches='tight')
+    plt.savefig('Rot3_data\\PWM\\st0_trials.png', bbox_inches='tight')
     plt.close()
 
     # Done trials for stage 1
     st1_trials = plot_trials(pwm, stage=1, p_type='all_trials')
-    plt.savefig('Rot3_data\\st1_trials.png', bbox_inches='tight')
+    plt.savefig('Rot3_data\\PWM\\st1_trials.png', bbox_inches='tight')
     plt.close()
 
     # Done trials for stage 2
     st2_trials = plot_trials(pwm, stage=2, p_type='all_trials')
-    plt.savefig('Rot3_data\\st2_trials.png', bbox_inches='tight')
+    plt.savefig('Rot3_data\\PWM\\st2_trials.png', bbox_inches='tight')
     plt.close()
 
     # Violation trials for stage 1
     st1_vio_trials = plot_trials(pwm, stage=1, p_type='vio_only')
-    plt.savefig('Rot3_data\\st1_vio_trials.png', bbox_inches='tight')
+    plt.savefig('Rot3_data\\PWM\\st1_vio_trials.png', bbox_inches='tight')
     plt.close()
 
     # Violation trials for stage 2
     st2_vio_trials = plot_trials(pwm, stage=2, p_type='vio_only')
-    plt.savefig('Rot3_data\\st2_vio_trials.png', bbox_inches='tight')
+    plt.savefig('Rot3_data\\PWM\\st2_vio_trials.png', bbox_inches='tight')
     plt.close()
 
     # Timeout trials for stage 1
     st1_tm_trials = plot_trials(pwm, stage=1, p_type='tm_only')
-    plt.savefig('Rot3_data\\st1_tm_trials.png', bbox_inches='tight')
+    plt.savefig('Rot3_data\\PWM\\st1_tm_trials.png', bbox_inches='tight')
     plt.close()
 
     # Timeout trials for stage 2
     st2_tm_trials = plot_trials(pwm, stage=2, p_type='tm_only')
-    plt.savefig('Rot3_data\\st2_tm_trials.png', bbox_inches='tight')
+    plt.savefig('Rot3_data\\PWM\\st2_tm_trials.png', bbox_inches='tight')
     plt.close()
 
     # Left trials for stage 1
     st1_left_trials = plot_trials(pwm, stage=1, p_type='left')
-    plt.savefig('Rot3_data\\st1_left_trials.png', bbox_inches='tight')
+    plt.savefig('Rot3_data\\PWM\\st1_left_trials.png', bbox_inches='tight')
     plt.close()
 
     # Left trials for stage 2
     st2_left_trials = plot_trials(pwm, stage=2, p_type='left')
-    plt.savefig('Rot3_data\\st2_left_trials.png', bbox_inches='tight')
+    plt.savefig('Rot3_data\\PWM\\st2_left_trials.png', bbox_inches='tight')
     plt.close()
 
     # Right trials for stage 1
     st1_right_trials = plot_trials(pwm, stage=1, p_type='right')
-    plt.savefig('Rot3_data\\st1_right_trials.png', bbox_inches='tight')
+    plt.savefig('Rot3_data\\PWM\\st1_right_trials.png', bbox_inches='tight')
     plt.close()
 
     # Right trials for stage 2
     st2_right_trials = plot_trials(pwm, stage=2, p_type='right')
-    plt.savefig('Rot3_data\\st2_right_trials.png', bbox_inches='tight')
+    plt.savefig('Rot3_data\\PWM\\st2_right_trials.png', bbox_inches='tight')
     plt.close()
 
 def run_box_plots():
     for animal in animals:
         fig_name = animal + '_boxp'
         plot = boxplot_animal(pwm, animal)
-        plt.savefig('Rot3_data\\' + fig_name + '.png', bbox_inches='tight')
+        plt.savefig('Rot3_data\\PWM\\' + fig_name + '.png', bbox_inches='tight')
         plt.close()
 # Was trying to check if timeouts, violations and left right trials make up all done trials. Some kinks currently
 #pwm_trials = Animal_df['done_trials'] - (Animal_df['violations']*Animal_df['done_trials']) - (Animal_df['timeouts']*Animal_df['done_trials']) - Animal_df['left_trials'] - Animal_df['right_trials']

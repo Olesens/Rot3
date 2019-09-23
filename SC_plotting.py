@@ -75,33 +75,8 @@ def clean_up_df(df, animallist=[], index=True, multiindex=True, fixstages=True, 
     return df
 
 
-# PLOTTING CP, TRIALS, AND WITHIN SESSION TRIAL TYPES
-def plot_cp(df, stage='All'):  # will I even need this for SC?
-    if stage != 'All':
-        mask = df['stage'] == stage
-        df = df[mask]
-        df_cp = df['total_CP']
-        col_list = df_cp.columns.values  # get list to use for labelling
-        cp_plot = plt.plot(df_cp,
-                           marker='o',
-                           linewidth=1.0,
-                           markersize=2.5)
-        plt.xticks(rotation=75)
-        plt.legend(col_list)
+# PLOTTING TRIALS, AND WITHIN SESSION TRIAL TYPES
 
-    else:
-        print('all stages included')
-        df_cp = df['total_CP']
-        cp_plot = df_cp.plot(marker='o',  # I might be able to set some of these parameters globally and not need function
-                             linewidth=1.0,
-                             markersize=2.5,
-                             cmap=plt.cm.RdPu)
-        plt.xticks(rotation=0,
-                   fontsize='medium')
-    plt.ylabel('Total CP')
-    plt.xlabel('Date')
-    plt.title('Total CP over time for each PWM animal')
-    return cp_plot
 
 
 def plot_trials(df, stage='All', p_type='all_trials'):
@@ -203,15 +178,6 @@ def boxplot_animal(df, animal_id, stage='All', percentage = False):
 
 # RUN ALL PLOTS AND UPDATE THEM IN FOLDERS
 def run_all_plots():
-    # plot CP duration for all animals
-    CP_fig = plot_cp(pwm)
-    plt.savefig('Rot3_data\\CP_fig.png', bbox_inches='tight')
-    plt.close()
-
-    # plot CP duration for stage 1
-    st1_CP = plot_cp(pwm, stage=1)
-    plt.savefig('Rot3_data\\st1_CP.png', bbox_inches='tight')
-    plt.close()
 
     # Done trials for stage 0
     st0_trials = plot_trials(pwm, stage=0, p_type='all_trials')
@@ -527,7 +493,7 @@ def plot_pcurve(big_df, animal_id, date, invert=False, col1='#810f7c', col2='#04
 
     try:  # check that you can fit data with p-curve
         par, mcov = curve_fit(pf, stim, right_prob)  # fit p curve to data
-        if ret_param is True:  # if condition true just return the slope
+        if ret_param is True:  # if condition true just return the estimated parameters
             return par
         plt.plot(stim2, pf(stim2, par[0], par[1], par[2], par[3]), color=col2)  # plot the p-curve
     except:
