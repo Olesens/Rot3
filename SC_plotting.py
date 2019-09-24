@@ -90,7 +90,19 @@ def clean_up_df(df, animallist=[], index=True, multiindex=True, fixstages=True, 
 
 
 # PLOTTING TRIALS, AND WITHIN SESSION TRIAL TYPES
-def plot_cp(df, stage='All'):
+def plot_cp(df, stage='All', date_list=None):
+    """
+    Plots total_CP overtime for all Animals in dataframe using pandas plotting tool. For PWM animals only.
+
+    At the moment cannot select for specific animals, so just alternatively create subset dataframe by running
+    clean_up_df with animallist.
+    :param df: cleaned dataframe with desired
+    :param stage: either string 'All' or int: 0,1,2,3
+    :param date_list: (list of strings) in pandas dataformat to plot cp for (Example '2019-09-16'
+    :return: plot of CP values over dates.
+    """
+    if date_list is not None:
+        df = df.loc[date_list]
     if stage != 'All':  # if stage no provided
         mask = df['stage'] == stage
         df = df[mask]
@@ -117,12 +129,24 @@ def plot_cp(df, stage='All'):
     plt.title('Total CP over time for each PWM animal')
     return cp_plot
 
-def plot_trials(df, stage='All', p_type='all_trials'):
+
+def plot_trials(df, stage='All', p_type='all_trials', str_task=None, date_list=None):
+    """
+    Plot trials for animals in df for selected stage and/or dates in date_list.
+    :param df: dataframe, all animals in dataframe will be plottet.
+    :param stage: 'All' or int 0,1,2,3 (depending on task)
+    :param p_type: (str), either of 'all_trials', 'vio_only', 'tm_only', 'left', 'right'
+    :param str_task: optional title task title (eg. 'PWM' 'SC)
+    :param date_list: list containing strings of datas in pandas date format
+    :return: plot
+    """
 
     p_types = ['all_trials', 'vio_only', 'tm_only', 'left', 'right']
     if p_type not in p_types:
         raise ValueError("Invalid p_type. Expected one of: %s" % p_type)
-
+    # Filter according to dates in date_list
+    if date_list is not None:
+        df = df.loc[date_list]
     # Filter according to stages
     if stage != 'All':
         mask = df['stage'] == stage
@@ -144,11 +168,11 @@ def plot_trials(df, stage='All', p_type='all_trials'):
                     'left': df['left_trials'] / df['done_trials']*100,
                     'right': df['right_trials'] / df['done_trials']*100}
 
-    p_types_title = {'all_trials': ' done trials for PWM animals minus violations and timeouts ',
-                     'vio_only': ': % Violation trials for PWM animals',
-                     'tm_only': ': % Timeout trials for PWM animals',
-                     'left': ': % Left trials for PWM animals',
-                     'right': ': % Right trials for PWM animals'}
+    p_types_title = {'all_trials': ' done trials for animals minus violations and timeouts ',
+                     'vio_only': ': % Violation trials for animals',
+                     'tm_only': ': % Timeout trials for animals',
+                     'left': ': % Left trials for animals',
+                     'right': ': % Right trials for animals'}
 
     df_trials = p_types_dict[p_type]
     col_list = df_trials.columns.values  # get list to use for labelling
@@ -166,40 +190,49 @@ def plot_trials(df, stage='All', p_type='all_trials'):
     plt.xticks(rotation=75)
     plt.legend(col_list)
     plt.xlabel('Date')
-    plt.title(stage, p_types_title[p_type])
+    if str_task is not None:
+        plt.title(str(str_task) + ' task  ' + 'stage: ' + str(stage)
+                  + p_types_title[p_type])
+    else:
+        plt.title(str(stage), p_types_title[p_type])
 
-    # how to change line colors by making a loop
     return tri_plot
 
 
-def boxplot_animal(df, animal_id, stage='All', percentage = False):
-    # maybe only for stage 2 and 3 really?
-    # select for the single animal, thus animal = level, axis=1 because it is on the column level
-    # not on the index level, .xs allows selection at specific often lower level
+def boxplot_animal(df, animal_id, stage='All'):
+    """
+    Generate stacked boxplot of percentage of trials being: violation, timeouts, left and right choice,
+    for specific animal
+    :param df: dateframe containing data for specified animal
+    :param animal_id: (str) name of animal
+    :param stage: 'All' or int 0,1,2,3 (depending on task)
+    :return: boxplot
+    """
 
+    if stage != 'All':
+        mask = df['stage'] == stage
+        df = df[mask]
 
     single_animal = df.xs(animal_id, level='animal', axis=1).copy()  # single animal dataframe
     vio = vio = single_animal['violations']*100  # this is in percentage
     tm = single_animal['timeouts']*100  # this is in percentage
 
+    # to avoid errors when performaing divison making any 0 values 1
     mask = single_animal['done_trials'] == 0
     single_animal['done_trials'] = single_animal['done_trials'].mask(mask, 1)
     right = (single_animal['right_trials'] / single_animal['done_trials']) * 100
     left = (single_animal['left_trials'] / single_animal['done_trials']) * 100
 
+    # calculate the height to start the different bars at
     height = np.add(left, right).tolist()
     height2 = np.add(height, vio).tolist()
     barWidth = 1
 
-    # need to have some exception cause I am plotting these on top of each other but some of them have no vio and left right trials
-    # have changed the order from the other plotting
-    # still gives errors...
+    # Generate stacked barplot
     boxplot = plt.bar(single_animal.index, right, color='#045a8d', edgecolor='black', width=barWidth)
     plt.bar(single_animal.index, left, bottom=right, color='#016c59', edgecolor='black', width=barWidth)
     plt.bar(single_animal.index, vio, bottom=height, color='#810f7c', edgecolor='black', width=barWidth)
     plt.bar(single_animal.index, tm, bottom=height2, color='#636363', edgecolor='black', width=barWidth)
-
-
 
     plt.xticks(rotation=75)
     plt.xlabel('Date')
@@ -209,71 +242,76 @@ def boxplot_animal(df, animal_id, stage='All', percentage = False):
     plt.legend(legend, fontsize=14)
     plt.title('Categorization of trials for: ' + animal_id, fontsize=18)
 
-    # Figure out how to add legend
-
     return boxplot
 
 
 # RUN ALL PLOTS AND UPDATE THEM IN FOLDERS
-def run_all_plots():
+# Make sure to update these to use your desired dataframe and save in correct folder, otherwise might overwrite.
+def run_all_plots(df):
+    """ Non-exhuastive plotting of different variables for different stages """
+    # plot CP duration for stage 1
+    st1_CP = plot_cp(df, stage=1)
+    plt.savefig('Rot3_data\\PWM\\st1_CP.png', bbox_inches='tight')
+    plt.close()
 
     # Done trials for stage 0
-    st0_trials = plot_trials(pwm, stage=0, p_type='all_trials')
+    st0_trials = plot_trials(df, stage=0, p_type='all_trials')
     plt.savefig('Rot3_data\\st0_trials.png', bbox_inches='tight')
     plt.close()
 
     # Done trials for stage 1
-    st1_trials = plot_trials(pwm, stage=1, p_type='all_trials')
+    st1_trials = plot_trials(df, stage=1, p_type='all_trials')
     plt.savefig('Rot3_data\\st1_trials.png', bbox_inches='tight')
     plt.close()
 
     # Done trials for stage 2
-    st2_trials = plot_trials(pwm, stage=2, p_type='all_trials')
+    st2_trials = plot_trials(df, stage=2, p_type='all_trials')
     plt.savefig('Rot3_data\\st2_trials.png', bbox_inches='tight')
     plt.close()
 
     # Violation trials for stage 1
-    st1_vio_trials = plot_trials(pwm, stage=1, p_type='vio_only')
+    st1_vio_trials = plot_trials(df, stage=1, p_type='vio_only')
     plt.savefig('Rot3_data\\st1_vio_trials.png', bbox_inches='tight')
     plt.close()
 
     # Violation trials for stage 2
-    st2_vio_trials = plot_trials(pwm, stage=2, p_type='vio_only')
+    st2_vio_trials = plot_trials(df, stage=2, p_type='vio_only')
     plt.savefig('Rot3_data\\st2_vio_trials.png', bbox_inches='tight')
     plt.close()
 
     # Timeout trials for stage 1
-    st1_tm_trials = plot_trials(pwm, stage=1, p_type='tm_only')
+    st1_tm_trials = plot_trials(df, stage=1, p_type='tm_only')
     plt.savefig('Rot3_data\\st1_tm_trials.png', bbox_inches='tight')
     plt.close()
 
     # Timeout trials for stage 2
-    st2_tm_trials = plot_trials(pwm, stage=2, p_type='tm_only')
+    st2_tm_trials = plot_trials(df, stage=2, p_type='tm_only')
     plt.savefig('Rot3_data\\st2_tm_trials.png', bbox_inches='tight')
     plt.close()
 
     # Left trials for stage 1
-    st1_left_trials = plot_trials(pwm, stage=1, p_type='left')
+    st1_left_trials = plot_trials(df, stage=1, p_type='left')
     plt.savefig('Rot3_data\\st1_left_trials.png', bbox_inches='tight')
     plt.close()
 
     # Left trials for stage 2
-    st2_left_trials = plot_trials(pwm, stage=2, p_type='left')
+    st2_left_trials = plot_trials(df, stage=2, p_type='left')
     plt.savefig('Rot3_data\\st2_left_trials.png', bbox_inches='tight')
     plt.close()
 
     # Right trials for stage 1
-    st1_right_trials = plot_trials(pwm, stage=1, p_type='right')
+    st1_right_trials = plot_trials(df, stage=1, p_type='right')
     plt.savefig('Rot3_data\\st1_right_trials.png', bbox_inches='tight')
     plt.close()
 
     # Right trials for stage 2
-    st2_right_trials = plot_trials(pwm, stage=2, p_type='right')
+    st2_right_trials = plot_trials(df, stage=2, p_type='right')
     plt.savefig('Rot3_data\\st2_right_trials.png', bbox_inches='tight')
     plt.close()
 
 
 def run_box_plots():
+    """ function for running all the boxplots """
     for animal in animals:
         fig_name = 'sc_' + animal + '_boxp'
         plot = boxplot_animal(sc, animal)
@@ -283,6 +321,7 @@ def run_box_plots():
 
 
 def run_pcurves():
+    """ function for running all psychometic curves"""
     for animal in animals:
         fig_name = 'sc_' + animal + '_pcurve'
         plot = animal_pcurve(sc, animal, date_list, stage=2)
@@ -292,6 +331,7 @@ def run_pcurves():
 
 
 def run_param_plots():
+    """ Extract all four parameters from p_curve fitting and plot """
     param_list = ['A', 'B', 'C', 'D']
     for parameter in param_list:
         for animal in animals:
@@ -302,24 +342,15 @@ def run_param_plots():
             plt.close()
 
 
-def run_slope_plots():
-    for animal in animals:
-        fig_name = 'sc_' + animal + '_slopes'
-        plot = param_days(sc, animal, date_list, stage=2, param='B')
-        plt.show()
-        plt.savefig('Rot3_data\\SoundCat\\' + fig_name + '.png', bbox_inches='tight')
-        plt.close()
-
-
 # FUNCTION TO CHECK SESSION
 def check(df, animal_id, date):
-    # could maybe modify this a little to be shorter, but it works atm
+    """ runs a check on specified animal and date in df to see if session is there, returns boolean"""
     single_animal = df.xs(animal_id, level='animal', axis=1).copy()
     session = single_animal.loc[date]
-    stim = session['history_stim']
+    stim = session['history_stim']  # nb you might get a false negative if for pwm you haven't change history_pair to
+    # history_stim
     try:
         stim = pd.DataFrame(stim, columns=['stim']).T
-
     except ValueError:
         #print('Could not extract stimulus history, check that specific animal and session exists')
         return False
@@ -329,7 +360,17 @@ def check(df, animal_id, date):
 
 # PLOTTING PROBABILITIES AND FITTING P-CURVES
 def cal_prob(df, animal_id, date, ret_hist=False):
-    # can definitely bring this baby down in size
+    """
+    Creates dataframe of the left and right choices the animal did for each stimuli on the given date
+    :param df: dateframe containing animal session
+    :param animal_id: (str) animal name
+    :param date: (str) pandas format date
+    :param ret_hist: (bool) if True returns of what the animal did. Dosen't calculate any probabilities.
+    :return: dataframe of probabilities
+    """
+
+    # still need to add for 10 stimuli, is this dependent on the stage?
+    # not super efficiently written atm,
     single_animal = df.xs(animal_id, level='animal', axis=1).copy()
     session = single_animal.loc[date]
     stim = session['history_stim']
@@ -338,6 +379,7 @@ def cal_prob(df, animal_id, date, ret_hist=False):
 
     if check(df, animal_id, date) is False:
         return None
+        print('Failed session check')
 
     stim = pd.DataFrame(stim, columns=['stim']).T
     side = pd.DataFrame(side, columns=['side']).T
@@ -348,8 +390,112 @@ def cal_prob(df, animal_id, date, ret_hist=False):
 
     if ret_hist is True:
         return history
-    # stage condition
-    if 6 in history['stim'].values:
+
+    if 8 in history['stim'].values:  # this is very crude way to chose which one to use
+        # print('detected 8 stimuli, calculating probabilities..')
+        # amount of times the rat went right when stim 1 was on (which is the correct choice)
+        history['stim1_wr'] = (history['side'] == 114) & (history['stim'] == 1) & (history['hits'] == 1)
+        history['stim2_wr'] = (history['side'] == 114) & (history['stim'] == 2) & (history['hits'] == 1)
+        history['stim3_wr'] = (history['side'] == 114) & (history['stim'] == 3) & (history['hits'] == 1)
+        history['stim4_wr'] = (history['side'] == 114) & (history['stim'] == 4) & (history['hits'] == 1)
+        # for stim 5-8 if the rat went right, which would be incorrect for those stimuli
+        history['stim5_wr'] = (history['side'] == 108) & (history['stim'] == 5) & (history['hits'] == 0)
+        history['stim6_wr'] = (history['side'] == 108) & (history['stim'] == 6) & (history['hits'] == 0)
+        history['stim7_wr'] = (history['side'] == 108) & (history['stim'] == 7) & (history['hits'] == 0)
+        history['stim8_wr'] = (history['side'] == 108) & (history['stim'] == 8) & (history['hits'] == 0)
+        # sum the above into one variable for each stimuli
+        sum_stim1R = history['stim1_wr'].sum()
+        sum_stim2R = history['stim2_wr'].sum()
+        sum_stim3R = history['stim3_wr'].sum()
+        sum_stim4R = history['stim4_wr'].sum()
+        sum_stim5R = history['stim5_wr'].sum()
+        sum_stim6R = history['stim6_wr'].sum()
+        sum_stim7R = history['stim7_wr'].sum()
+        sum_stim8R = history['stim8_wr'].sum()
+
+        # extract all done trials minus violations and timeouts and calculate percentage
+        done_trials = session.loc['done_trials'] - (
+                    (session.loc['violations'] + session.loc['timeouts']) * session.loc['done_trials'])
+        # could do the above outside of the condition
+        stim1_percR = sum_stim1R / done_trials * 100
+        stim2_percR = sum_stim2R / done_trials * 100
+        stim3_percR = sum_stim3R / done_trials * 100
+        stim4_percR = sum_stim4R / done_trials * 100
+        stim5_percR = sum_stim5R / done_trials * 100
+        stim6_percR = sum_stim6R / done_trials * 100
+        stim7_percR = sum_stim7R / done_trials * 100
+        stim8_percR = sum_stim8R / done_trials * 100
+
+        # just doing it for left as well to check if it adds up to 100% which it should when timeouts and violations
+        # are not included
+
+        # amount of times the rat went left when stim 1,2,3
+        history['stim1_wl'] = (history['side'] == 114) & (history['stim'] == 1) & (history['hits'] == 0)
+        history['stim2_wl'] = (history['side'] == 114) & (history['stim'] == 2) & (history['hits'] == 0)
+        history['stim3_wl'] = (history['side'] == 114) & (history['stim'] == 3) & (history['hits'] == 0)
+        history['stim4_wl'] = (history['side'] == 114) & (history['stim'] == 4) & (history['hits'] == 0)
+        # for stim 4,5,6 the rat went left
+        history['stim5_wl'] = (history['side'] == 108) & (history['stim'] == 5) & (history['hits'] == 1)
+        history['stim6_wl'] = (history['side'] == 108) & (history['stim'] == 6) & (history['hits'] == 1)
+        history['stim7_wl'] = (history['side'] == 108) & (history['stim'] == 7) & (history['hits'] == 1)
+        history['stim8_wl'] = (history['side'] == 108) & (history['stim'] == 8) & (history['hits'] == 1)
+
+        # sum the above into one variable for each stimuli
+        sum_stim1L = history['stim1_wl'].sum()
+        sum_stim2L = history['stim2_wl'].sum()
+        sum_stim3L = history['stim3_wl'].sum()
+        sum_stim4L = history['stim4_wl'].sum()
+        sum_stim5L = history['stim5_wl'].sum()
+        sum_stim6L = history['stim6_wl'].sum()
+        sum_stim7L = history['stim7_wl'].sum()
+        sum_stim8L = history['stim8_wl'].sum()
+        stim1_percL = sum_stim1L / done_trials * 100
+        stim2_percL = sum_stim2L / done_trials * 100
+        stim3_percL = sum_stim3L / done_trials * 100
+        stim4_percL = sum_stim4L / done_trials * 100
+        stim5_percL = sum_stim5L / done_trials * 100
+        stim6_percL = sum_stim6L / done_trials * 100
+        stim7_percL = sum_stim7L / done_trials * 100
+        stim8_percL = sum_stim8L / done_trials * 100
+
+        percentage_sum = stim1_percR + stim2_percR + stim3_percR + stim4_percR + stim5_percR + stim6_percR \
+                         + stim7_percR + stim8_percR + stim1_percL + stim2_percL + stim3_percL + stim4_percL + \
+                         stim5_percL + stim6_percL + stim7_percL + stim8_percL
+        print('Sum of percentages for left and right choices are: ' +str(percentage_sum))
+
+        # calculate probability
+        # sum the left and right choices for each given stimulus
+        stim1_sum = sum_stim1R + sum_stim1L
+        stim2_sum = sum_stim2R + sum_stim2L
+        stim3_sum = sum_stim3R + sum_stim3L
+        stim4_sum = sum_stim4R + sum_stim4L
+        stim5_sum = sum_stim5R + sum_stim5L
+        stim6_sum = sum_stim6R + sum_stim6L
+        stim7_sum = sum_stim7R + sum_stim7L
+        stim8_sum = sum_stim8R + sum_stim8L
+
+        # calculate the percentage of right choices for each given stimulus
+        s1_right_prob = sum_stim1R / stim1_sum * 100
+        s2_right_prob = sum_stim2R / stim2_sum * 100
+        s3_right_prob = sum_stim3R / stim3_sum * 100
+        s4_right_prob = sum_stim4R / stim4_sum * 100
+        s5_right_prob = sum_stim5R / stim5_sum * 100
+        s6_right_prob = sum_stim6R / stim6_sum * 100
+        s7_right_prob = sum_stim7R / stim7_sum * 100
+        s8_right_prob = sum_stim8R / stim8_sum * 100
+
+        # create a dict with all variables to include in dataframe
+        dict = {'Sum right choices': [sum_stim1R, sum_stim2R, sum_stim3R, sum_stim4R, sum_stim5R, sum_stim6R, sum_stim7R, sum_stim8R],
+                'Perc_R of all done': [stim1_percR, stim2_percR, stim3_percR, stim4_percR, stim5_percR, stim6_percR, stim7_percR, stim8_percR],
+                'Sum left choices': [sum_stim1L, sum_stim2L, sum_stim3L, sum_stim4L, sum_stim5L, sum_stim6L, sum_stim7L, sum_stim8L],
+                'Perc_L of all done': [stim1_percL, stim2_percL, stim3_percL, stim4_percL, stim5_percL, stim6_percL, stim7_percL, stim8_percL],
+                'Stimulus trials sum': [stim1_sum, stim2_sum, stim3_sum, stim4_sum, stim5_sum, stim6_sum, stim7_sum, stim8_sum],
+                'Right_prob': [s1_right_prob, s2_right_prob, s3_right_prob, s4_right_prob, s5_right_prob, s6_right_prob, s7_right_prob, s8_right_prob]
+                }
+        stim_df = pd.DataFrame(dict, index=['stim1', 'stim2', 'stim3', 'stim4', 'stim5', 'stim6', 'stim7', 'stim8'])
+        return stim_df
+
+    elif 6 in history['stim'].values:
         # print('detected 6 stimuli, calculating probabilities..')
         # amount of times the rat went right when stim 1 was on (which is the correct choice)
         history['stim1_wr'] = (history['side'] == 114) & (history['stim'] == 1) & (history['hits'] == 1)
@@ -432,7 +578,7 @@ def cal_prob(df, animal_id, date, ret_hist=False):
         stim_df = pd.DataFrame(dict, index=['stim1', 'stim2', 'stim3', 'stim4', 'stim5', 'stim6'])
         return stim_df
 
-    if 6 not in history['stim'].values:
+    elif 6 not in history['stim'].values:
         # print('detected 4 stimuli, calculating probabilities...')
         history['stim1_wr'] = (history['side'] == 114) & (history['stim'] == 1) & (history['hits'] == 1)
         history['stim2_wr'] = (history['side'] == 114) & (history['stim'] == 2) & (history['hits'] == 1)
@@ -495,6 +641,8 @@ def cal_prob(df, animal_id, date, ret_hist=False):
         return stim_df
 
 
+
+# Add docstrings and make sure it works for pwm!
 def pf(x, A, B, C, D):  # psychometric function
     return D + A / (1 + np.exp((-(x-C))/B)) # athena function
     #return D + (A - D) / (1.0 + ((x / C) ** (B)))  # matlab function
@@ -682,9 +830,14 @@ SC_df = pickle.load(pickle_in)
 pickle_in = open("Rot3_data\\PWM_full_df.pkl","rb")
 PWM_df = pickle.load(pickle_in)
 
+# Define which animals
+animals_sc = ['AA01', 'AA05', 'AA07', 'DO04', 'DO08', 'SC04', 'SC05', 'VP01', 'VP07', 'VP08']
+animals_pwm = ['AA02', 'AA04', 'AA06', 'AA08', 'DO01', 'DO02', 'DO05', 'DO06',
+                'SC01', 'SC02', 'SC03', 'SC06', 'VP02', 'VP03', 'VP06']
+
 # Clean them up
-sc = clean_up_df(SC_df)
-pwm = clean_up_df(PWM_df)
+sc = clean_up_df(SC_df, animals_sc)
+pwm = clean_up_df(PWM_df, animals_pwm)
 pwm = pwm.rename(columns={"history_pair": "history_stim"})  # rename this column to same column name as sc
 
 
