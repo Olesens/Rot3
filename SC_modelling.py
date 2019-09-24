@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import math
 from scipy.optimize import curve_fit
-from SC_plotting import clean_up_df, cal_prob
+from Plotting_functions import clean_up_df, cal_prob
 import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression

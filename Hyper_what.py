@@ -1,6 +1,5 @@
-from PWM_Plotting import clean_up_df, cal_prob
+from Plotting_functions import clean_up_df, cal_prob
 from SC_modelling import trial_df, all_trials, cv_models_logit, cv_models_logreg, cv_models_log, plot_all_logs
-from SC_plotting import clean_up_df as clean_up_sc
 import pandas as pd
 import numpy as np
 import pickle
