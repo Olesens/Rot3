@@ -4,16 +4,6 @@ import pickle
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 import scipy as sy
-import ipython_genutils
-
-# Plotting params (globally set)
-plt.rcParams['figure.figsize'] = [20, 10]
-plt.rcParams['axes.facecolor'] = 'FFFFFF'
-plt.rcParams['text.color'] = 'black'
-
-# Load in file
-pickle_in = open("Rot3_data\\SC_full_df.pkl","rb")
-Animal_df = pickle.load(pickle_in)
 
 
 # DEFINED ERROR CLASSES
@@ -37,23 +27,46 @@ class SessionCheckError(Error):
 
 
 # CLEAN UP AND CREATE NEW DF FROM RAW
-def clean_up_df(df, animallist=[], index=True, multiindex=True, fixstages=True, duplicates=True):
+def clean_up_df(df, animallist=[], index=True, multiindex=True, fixstages=True, duplicates=True, print_dup=False):
     """
-    :param df: dataframe to take in a clean up
-    :param animallist:
-    :param index:
-    :param multiindex:
-    :param fixstages:
-    :param duplicates
+    Takes in dataframe and makes alterations, fixing stage issues optimizing index for plotting
+
+    :param df: dataframe to take in and clean up
+    :param animallist: optional list of string names for animals to select for in cleaned up dataframe
+    :param index: (bool), if True sorts index (date)
+    :param multiindex: (bool), if True names index multi-index
+    :param fixstages: (bool), if True applies mask to change stage number to correct.
+    :param duplicates: (bool), if True removes duplicates
+    :param print_dup: (bool), if True print duplicates being removed
     :return:
     """
     if index is True:
-        df = df.sort_index()  # sort according to index, this should sort according to date, think it sort animals
+        df = df.sort_index()  # sort according to index, this should sort according to date
     if multiindex is True:
         df = df.rename_axis(['animal', 'date2'])  # add labels for Multi-index
     if fixstages is True:
-        mask = (df['stage'] == 1) & (df['reward_type'] == 'Always')  # turn stage 1 to 0 if reward type is always
-        df['stage'] = df['stage'].mask(mask, 0)  # this is for SC task
+        # add mask to label what task the rats did based on their settings file.
+        df['task'] = None  # make the baseline Nan values
+        mask = df.file.str.contains('SoundCat')
+        df['task'] = df['task'].mask(mask, 'SC')
+        mask = df.file.str.contains('DelayComp')
+        df['task'] = df['task'].mask(mask, 'PWM')
+
+        # For SC task, turn stage 1 to 0 if reward type is always
+        try:
+            mask = (df['stage'] == 1) & (df['reward_type'] == 'Always') & (df['task'] == 'SC')
+            df['stage'] = df['stage'].mask(mask, 0)  # this is for SC task
+        except:
+            print('Could not apply SC stage mask to dataframe')
+
+        # For PWM task, turn stage 1 to 2 if A2_time is above 0 and stage 2 to 3 if reward_type is NoReward
+        try:
+            mask = (df['stage'] == 1) & (df['A2_time'] > 0) & (df['task'] == 'PWM')
+            df['stage'] = df['stage'].mask(mask, 2)
+            mask = (df['stage'] == 2) & (df['reward_type'] == 'NoReward') & (df['task'] == 'PWM')
+            df['stage'] = df['stage'].mask(mask, 3)
+        except:
+            print('Could not apply PWM stage mask to dataframe')
 
     if animallist:
         df = df.loc[animallist]  # include only specifically given animals
@@ -62,22 +75,47 @@ def clean_up_df(df, animallist=[], index=True, multiindex=True, fixstages=True, 
         df = df.swaplevel('animal', 'date2')  # can't remember is this is necessary for duplicate removal
         df = df.reset_index()  # In order to delete duplicates
         dup_r = df[df.duplicated(['date2', 'animal'])]  # this is actually unnecessary
-        # print('dub is:',dup_r)
+        if print_dup is True:
+            print('duplicates are:', dup_r)
         df = df.drop_duplicates(['date2', 'animal'])
         dup_r = df[df.duplicated(['date2', 'animal'])]  # Run a little double check
-        # print('dub is:',dup_r)
+        if print_dup is True:
+            print('After removal duplicates are:', dup_r)
         # Put the dataframe nicely together again
         df = df.set_index(['date2', 'animal'])
         df = df.sort_index()
         df = df.unstack()
 
-        #could include a show removed duplicates function
     return df
 
 
 # PLOTTING TRIALS, AND WITHIN SESSION TRIAL TYPES
+def plot_cp(df, stage='All'):
+    if stage != 'All':  # if stage no provided
+        mask = df['stage'] == stage
+        df = df[mask]
+        df_cp = df['total_CP']
+        col_list = df_cp.columns.values  # get list to use for labelling
+        cp_plot = plt.plot(df_cp,
+                           marker='o',
+                           linewidth=1.0,
+                           markersize=2.5)
+        plt.xticks(rotation=75)
+        plt.legend(col_list)
 
-
+    else:
+        print('all stages included')
+        df_cp = df['total_CP']
+        cp_plot = df_cp.plot(marker='o',
+                             linewidth=1.0,
+                             markersize=2.5,
+                             cmap=plt.cm.RdPu)
+        plt.xticks(rotation=0,
+                   fontsize='medium')
+    plt.ylabel('Total CP')
+    plt.xlabel('Date')
+    plt.title('Total CP over time for each PWM animal')
+    return cp_plot
 
 def plot_trials(df, stage='All', p_type='all_trials'):
 
@@ -627,10 +665,33 @@ def param_days(big_df, animal_id, date_list, stage='ALL', param='B'):
     return alp_plot
 
 
+
+
+
+
+# Plotting params (globally set), these are quite large images
+plt.rcParams['figure.figsize'] = [20, 10]
+plt.rcParams['axes.facecolor'] = 'FFFFFF'
+plt.rcParams['text.color'] = 'black'
+
+# Load in SC file
+pickle_in = open("Rot3_data\\SC_full_df.pkl", "rb")
+SC_df = pickle.load(pickle_in)
+
+# Load in PWM file
+pickle_in = open("Rot3_data\\PWM_full_df.pkl","rb")
+PWM_df = pickle.load(pickle_in)
+
+# Clean them up
+sc = clean_up_df(SC_df)
+pwm = clean_up_df(PWM_df)
+pwm = pwm.rename(columns={"history_pair": "history_stim"})  # rename this column to same column name as sc
+
+
 # Create the cleaned up SC dataframe, shouldn't need to select animals
 animals = ['AA01', 'AA03', 'AA05', 'AA07', 'DO04', 'DO08', 'SC04', 'SC05',
            'VP01', 'VP07', 'VP08']  # AA03 and SC04 don't do any trials
-sc = clean_up_df(Animal_df)
+
 date_list = sc.index.values
 
 # good example animal and day

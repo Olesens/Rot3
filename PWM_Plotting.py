@@ -3,84 +3,18 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 from SC_plotting import check
-import ipython_genutils
-# Plotting params (globally set)
-plt.rcParams['figure.figsize'] = [20, 10]
-plt.rcParams['axes.facecolor'] = 'FFFFFF'
-plt.rcParams['text.color'] = 'black'
-
-# Load in file
-pickle_in = open("Rot3_data\\PWM_full_df.pkl","rb")
-Animal_df = pickle.load(pickle_in)
 
 
-# CLEAN UP AND CREATE NEW DF FROM RAW
-def clean_up_df(df, animallist=[], index=True, multiindex=True, fixstages=True, duplicates=True):
-    """
 
-    :param df:
-    :param animallist:
-    :param index:
-    :param multiindex:
-    :param fixstages:
-    :param duplicates:
-    :return:
-    """
-    if index is True:
-        df = df.sort_index()  # sort according to index, this should sort according to date
-    if multiindex is True:
-        df = df.rename_axis(['animal', 'date2'])  # add labels for Multi-index
-    if fixstages is True:
-        mask = (df['stage'] == 1) & (df['A2_time'] > 0)  # Fix stages problem!!
-        df['stage'] = df['stage'].mask(mask, 2)  # have not yet created mask for stage 3
-        # stage 3 equals: stage = 1(after mask 2) and reward type = NoReward
-    if animallist:
-        df = df.loc[animallist]  # include only specifically given animals
-        # should make this dependent on their settings file in the future
-    if duplicates is True: # remove duplicates
-        df = df.swaplevel('animal', 'date2')  # can't remember is this is necessary for duplicate removal
-        df = df.reset_index()  # In order to delete duplicates
-        dup_r = df[df.duplicated(['date2', 'animal'])]  # this is actually unnecessary
-        # print('dub is:',dup_r)
-        df = df.drop_duplicates(['date2', 'animal'])
-        dup_r = df[df.duplicated(['date2', 'animal'])]  # Run a little double check
-        # print('dub is:',dup_r)
-        # Put the dataframe nicely together again
-        df = df.set_index(['date2', 'animal'])
-        df = df.sort_index()
-        df = df.unstack()
 
-        #could include a show removed duplicates function
-    return df
-pwm = pwm.rename(columns={"history_pair": "history_stim"})
+
+
+
+
+
 
 # PLOTTING CP, TRIALS, AND WITHIN SESSION TRIAL TYPES
-def plot_cp(df, stage='All'):
-    if stage != 'All':
-        mask = df['stage'] == stage
-        df = df[mask]
-        df_cp = df['total_CP']
-        col_list = df_cp.columns.values  # get list to use for labelling
-        cp_plot = plt.plot(df_cp,
-                           marker='o',
-                           linewidth=1.0,
-                           markersize=2.5)
-        plt.xticks(rotation=75)
-        plt.legend(col_list)
 
-    else:
-        print('all stages included')
-        df_cp = df['total_CP']
-        cp_plot = df_cp.plot(marker='o',
-                             linewidth=1.0,
-                             markersize=2.5,
-                             cmap=plt.cm.RdPu)
-        plt.xticks(rotation=0,
-                   fontsize='medium')
-    plt.ylabel('Total CP')
-    plt.xlabel('Date')
-    plt.title('Total CP over time for each PWM animal')
-    return cp_plot
 
 
 def plot_trials(df, stage='All', p_type='all_trials'):

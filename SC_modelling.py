@@ -24,7 +24,14 @@ pickle_in = open("Rot3_data\\SC_full_df.pkl","rb")
 Animal_df = pickle.load(pickle_in)
 scaler = preprocessing.MinMaxScaler()  # define name for scaler used in cv_model functions
 
-
+date_list_sc = ['2019-07-26', '2019-07-27', '2019-07-29', '2019-07-30', '2019-07-31',
+       '2019-08-01', '2019-08-02', '2019-08-05', '2019-08-06', '2019-08-07',
+       '2019-08-08', '2019-08-09', '2019-08-12', '2019-08-13', '2019-08-14',
+       '2019-08-15', '2019-08-16', '2019-08-19', '2019-08-20', '2019-08-21',
+       '2019-08-22', '2019-08-23', '2019-08-27', '2019-08-28', '2019-08-29',
+       '2019-08-30', '2019-09-02', '2019-09-03', '2019-09-04', '2019-09-05',
+       '2019-09-06', '2019-09-09', '2019-09-10', '2019-09-11', '2019-09-12',
+       '2019-09-13', '2019-09-16']
 # Generate dataframe of all relevant raw trials, exclude vio and tm trials
 def trial_df(df, animal_id, date, ses_no=1):
     """
@@ -84,7 +91,7 @@ def trial_df(df, animal_id, date, ses_no=1):
     return data_df
 
 
-def all_trials(df, animal_id, date_list, dummies=False):
+def all_trials(df, animal_id, date_list, dummies=True):
     session_list = []
     session_index = 1
     for session in date_list:
@@ -223,7 +230,7 @@ def check_all_models(df):
 
 
 # Different logistic functions, could concatenate into one function
-def cv_models_logit(df, plot=False, avoid_nan=False, normalise=True, dummies=False, solver=''):  # have not figured out in this to deal with potential dummy variables
+def cv_models_logit(df, plot=False, avoid_nan=False, normalise=True, dummies=True, solver=None):  # have not figured out in this to deal with potential dummy variables
     # should I add a way chose which model to run
     # and add animal id?
     df['intercept'] = 1  # think I need this when I only have Ct_stim to estimate intercept
@@ -319,7 +326,7 @@ def cv_models_logit(df, plot=False, avoid_nan=False, normalise=True, dummies=Fal
     return pr2_dict
 
 
-def cv_models_logreg(df, plot=False, normalise=True, dummies=False):  # have not figured out in this to deal with potential dummy variables
+def cv_models_logreg(df, plot=False, normalise=True, dummies=True):  # have not figured out in this to deal with potential dummy variables
     #df['intercept'] = 1  # think I need this when I only have Ct_stim to estimate intercept
     y = df['Ct_wr']
     pr2_dict = {}
@@ -399,7 +406,7 @@ def cv_models_logreg(df, plot=False, normalise=True, dummies=False):  # have not
     return pr2_dict
 
 
-def cv_models_log(df, plot=False, normalise=True, dummies=False):  # have not figured out in this to deal with potential dummy variables
+def cv_models_log(df, plot=False, normalise=True, dummies=True):  # have not figured out in this to deal with potential dummy variables
     #df['intercept'] = 1  # think I need this when I only have Ct_stim to estimate intercept
     y = df['Ct_wr']
     pr2_dict = {}
@@ -477,7 +484,7 @@ def cv_models_log(df, plot=False, normalise=True, dummies=False):  # have not fi
     return pr2_dict
 
 
-def plot_all_logs(df, animal_id=None, avoid_nan=False, normalise=True, dummies=False):
+def plot_all_logs(df, animal_id=None, avoid_nan=False, normalise=True, dummies=True):
     dict1 = cv_models_logit(df, plot=False, avoid_nan=avoid_nan, normalise=normalise, dummies=dummies)
     dict2 = cv_models_logreg(df, normalise=normalise, dummies=dummies)
     dict3 = cv_models_log(df, normalise=normalise, dummies=dummies)
@@ -497,10 +504,10 @@ def plot_all_logs(df, animal_id=None, avoid_nan=False, normalise=True, dummies=F
 def run_all_logplots():
     for animal in animals:
         try:
-            df = all_trials(sc, animal, date_list, dummies=False)
+            df = all_trials(sc, animal, date_list_sc, dummies=True)
             #id = str(animal)
-            fig_name = 'sc_' + animal + '_R2_nanT_normT_stNR'
-            plot = plot_all_logs(df, animal_id=animal, avoid_nan=True)
+            fig_name = 'sc_' + animal + '_R2_nanF_normT_dum_stNR'
+            plot = plot_all_logs(df, animal_id=animal, avoid_nan=False)
             plt.savefig('Rot3_data\\SoundCat\\LogReg\\' + fig_name + '.png')
             plt.close()
         except:
